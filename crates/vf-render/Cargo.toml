@@ -1,0 +1,12 @@
+[package]
+name = "vf-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vf-project = { path = "../vf-project" }
+vf-image = { path = "../vf-image" }
+opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc"] }
+thiserror.workspace = true

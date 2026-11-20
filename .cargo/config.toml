@@ -1,0 +1,9 @@
+# 项目级 cargo 配置：使用 rsproxy 国内镜像（稀疏索引）
+[source.crates-io]
+replace-with = "rsproxy-sparse"
+
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"
+
+[net]
+retry = 3

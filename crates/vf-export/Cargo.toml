@@ -1,0 +1,14 @@
+[package]
+name = "vf-export"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vf-project = { path = "../vf-project" }
+vf-media = { path = "../vf-media" }
+vf-render = { path = "../vf-render" }
+vf-image = { path = "../vf-image" }
+opencv = { version = "0.93", default-features = false, features = ["clang-runtime"] }
+thiserror.workspace = true

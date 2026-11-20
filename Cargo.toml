@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/vf-project",
+  "crates/vf-core",
+  "crates/vf-image",
+  "crates/vf-media",
+  "crates/vf-vision",
+  "crates/vf-render",
+  "crates/vf-fusion",
+  "crates/vf-queue",
+  "crates/vf-cache",
+  "crates/vf-text",
+  "crates/vf-ocr",
+  "crates/vf-pipeline",
+  "crates/vf-export",
+]
+# Tauri 外壳有独立的 workspace，需要 WebKitGTK，不在这里编译
+exclude = ["app/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+blake3 = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+regex = "1"

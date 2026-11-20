@@ -1,0 +1,34 @@
+# Rust 构建产物
+target/
+**/target/
+
+# 前端依赖与构建产物
+node_modules/
+app/dist/
+app/.vite/
+
+# 日志与临时文件
+*.log
+*.tmp
+*.exporting.mp4
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.pyc
+.venv/
+
+# 模型、权重与媒体（不入库，见 docs/HANDOVER.md 第 6 节）
+*.onnx
+*.pdiparams
+*.pdmodel
+*.pt
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.m4v
+*.maskproj
+
+# 系统与编辑器
+Thumbs.db
+.DS_Store

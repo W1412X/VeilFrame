@@ -1,0 +1,4 @@
+# 仓库内统一使用 LF。.sh 脚本在 WSL 中运行，CRLF 会导致执行失败。
+* text=auto eol=lf
+*.png binary
+*.ico binary

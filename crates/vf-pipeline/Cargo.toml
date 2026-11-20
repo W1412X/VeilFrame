@@ -1,0 +1,16 @@
+[package]
+name = "vf-pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vf-project = { path = "../vf-project" }
+vf-fusion = { path = "../vf-fusion" }
+vf-cache = { path = "../vf-cache" }
+vf-image = { path = "../vf-image" }
+vf-vision = { path = "../vf-vision" }
+vf-text = { path = "../vf-text" }
+opencv = { version = "0.93", default-features = false, features = ["clang-runtime"] }
+thiserror.workspace = true
