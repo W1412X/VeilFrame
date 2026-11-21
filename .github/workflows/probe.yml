@@ -20,6 +20,7 @@ jobs:
       VCPKGRS_TRIPLET: arm64-osx-static
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
+      OPENCV_VERSION: "4.14.0"
       VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
     steps:
       - uses: actions/checkout@v4
@@ -123,6 +124,7 @@ jobs:
       VCPKGRS_TRIPLET: x64-linux-static
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
+      OPENCV_VERSION: "4.14.0"
       VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
     steps:
       - uses: actions/checkout@v4
@@ -240,6 +242,7 @@ jobs:
       VCPKGRS_TRIPLET: x64-windows-static-md
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
+      OPENCV_VERSION: "4.14.0"
       VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
     steps:
       - uses: actions/checkout@v4
