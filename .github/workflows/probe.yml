@@ -44,7 +44,7 @@ jobs:
 
       - name: ORT tag 1.20.1 API 查询
         continue-on-error: true
-        run: curl -sf --retry 2 -o /dev/null -H "Accept: application/vnd.github+json" "https://api.github.com/repos/microsoft/onnxruntime/releases/tags/v1.20.1"
+        run: curl -sf --retry 2 -o /dev/null "https://api.github.com/repos/microsoft/onnxruntime/releases/tags/v1.20.1"
 
       - name: ffmpeg-static linux x64
         continue-on-error: true
