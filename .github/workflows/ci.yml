@@ -38,11 +38,6 @@ jobs:
         with:
           workspaces: "."
 
-      - name: 下载 ONNX Runtime（运行期动态加载）
-        run: |
-          bash scripts/ci/fetch-ort.sh linux "$RUNNER_TEMP/ort-lib"
-          echo "ORT_DYLIB_PATH=$RUNNER_TEMP/ort-lib/libonnxruntime.so" >> "$GITHUB_ENV"
-
       - name: 运行测试
         run: cargo test --workspace --locked
 

@@ -165,7 +165,7 @@ PP-OCRv5 的 Paddle 权重转 ONNX 失败：PoC 环境中的 `paddle2onnx` 1.3.1
 
 | 组件 | 来源 | 放置位置 |
 |---|---|---|
-| ONNX Runtime 1.20.1 | GitHub `microsoft/onnxruntime` release | `app/src-tauri/resources/onnxruntime/` |
+| ONNX Runtime 1.20.1 | NuGet `Microsoft.ML.OnnxRuntime`（`scripts/ci/fetch-ort.sh` 解原生库） | `app/src-tauri/resources/onnxruntime/` |
 | ffmpeg / ffprobe | npm `ffmpeg-static@5.3.0`、`ffprobe-static@3.1.0`（静态构建） | `app/src-tauri/resources/bin/` |
 | PP-OCRv5 模型与字典 | Hugging Face（CI 下载） | `app/src-tauri/resources/models/` |
 | OpenCV | vcpkg 静态构建（CI） | 直接链入可执行文件 |
@@ -174,10 +174,10 @@ PP-OCRv5 的 Paddle 权重转 ONNX 失败：PoC 环境中的 `paddle2onnx` 1.3.1
 
 ### 6.3 CI/CD
 
-- `ci.yml`：Ubuntu 22.04 上用 apt OpenCV 4.5.4 + ffmpeg 跑 Rust 测试；另起前端任务做类型检查、测试、打包。
+- `ci.yml`：Ubuntu 22.04 上用 apt OpenCV 4.5.4 + ffmpeg 跑 Rust 测试；另起前端任务做类型检查、测试、打包。`ort` 是 `load-dynamic`，测试不加载 ONNX Runtime（OCR 冒烟测试是 `#[ignore]`），所以 CI 不下载它。
 - `release.yml`：矩阵构建 Linux x64（deb + AppImage）、Windows x64（NSIS）、macOS arm64（dmg）。
   - OpenCV 用 vcpkg 静态 triplet（Linux/macOS 用 `ci/triplets/` 覆盖，Windows 用 `x64-windows-static-md`），二进制缓存放在 GitHub Actions cache。
-  - ONNX Runtime 按平台下载；ffmpeg/ffprobe 用 npm 静态包；模型从 Hugging Face 下载，失败回退 hf-mirror；字典已入库，不需要现场生成。
+  - ONNX Runtime 用 `scripts/ci/fetch-ort.sh` 从 NuGet 官方包按平台解原生库（GitHub release 上 v1.20.1 的预编译资产不存在）；ffmpeg/ffprobe 用 npm 静态包；模型从 Hugging Face 下载，失败回退 hf-mirror；字典已入库，不需要现场生成。
   - tag 触发时通过 `softprops/action-gh-release` 上传安装包；普通手动触发只上传 artifact。
   - 首次运行会编译 OpenCV，耗时长；之后命中缓存。
 
