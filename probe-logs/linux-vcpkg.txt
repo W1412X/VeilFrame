@@ -1,0 +1,158 @@
+===== tail =====
+utf8-range:x64-linux-static@7.36.2 package ABI: 92d684280b58dabd9944db10bbda7f0726ba912181937dcad8e93406fb07f228
+Building utf8-range:x64-linux-static@7.36.2...
+/home/runner/work/VeilFrame/VeilFrame/ci/triplets/x64-linux-static.cmake: info: loaded overlay triplet from here
+Downloading https://github.com/protocolbuffers/protobuf/archive/v36.2.tar.gz -> protocolbuffers-protobuf-v36.2.tar.gz
+Successfully downloaded protocolbuffers-protobuf-v36.2.tar.gz
+-- Extracting source /home/runner/work/VeilFrame/VeilFrame/vcpkg/downloads/protocolbuffers-protobuf-v36.2.tar.gz
+-- Applying patch fix-cmake.patch
+-- Using source at /home/runner/work/VeilFrame/VeilFrame/vcpkg/buildtrees/utf8-range/src/v36.2-d659e03a59.clean
+-- Configuring x64-linux-static
+-- Building x64-linux-static-dbg
+-- Building x64-linux-static-rel
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/utf8-range_x64-linux-static/lib/pkgconfig/utf8_range.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/utf8-range_x64-linux-static/debug/lib/pkgconfig/utf8_range.pc
+-- Installing: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/utf8-range_x64-linux-static/share/utf8-range/copyright
+-- Performing post-build validation
+Starting submission of utf8-range:x64-linux-static@7.36.2 to 1 binary cache(s) in the background
+Elapsed time to handle utf8-range:x64-linux-static: 2.7 s
+Installing 102/104 protobuf:x64-linux-static@7.36.2#1...
+protobuf:x64-linux-static@7.36.2#1 package ABI: 715429ccbf266eeebf0ef0083b42f19c65a12f059eeddf35b83deeb279ff9441
+Building protobuf:x64-linux-static@7.36.2#1...
+/home/runner/work/VeilFrame/VeilFrame/ci/triplets/x64-linux-static.cmake: info: loaded overlay triplet from here
+Downloading https://github.com/protocolbuffers/protobuf/archive/v36.2.tar.gz -> protocolbuffers-protobuf-v36.2.tar.gz
+Successfully downloaded protocolbuffers-protobuf-v36.2.tar.gz
+-- Extracting source /home/runner/work/VeilFrame/VeilFrame/vcpkg/downloads/protocolbuffers-protobuf-v36.2.tar.gz
+-- Applying patch fix-static-build.patch
+-- Applying patch fix-default-proto-file-path.patch
+-- Applying patch fix-utf8-range.patch
+-- Applying patch fix-install-dirs.patch
+-- Applying patch fix-constinit-with-clang-cl.patch
+-- Applying patch fix-upb.patch
+-- Applying patch fix-global-empty-string-abi.patch
+-- Using source at /home/runner/work/VeilFrame/VeilFrame/vcpkg/buildtrees/protobuf/src/v36.2-c7a1a3bedc.clean
+-- Configuring x64-linux-static
+CMake Warning at installed/x64-linux/share/vcpkg-cmake/vcpkg_cmake_configure.cmake:359 (message):
+  The following variables are not used in CMakeLists.txt:
+
+      protobuf_BUILD_TARGET_LIBPROTOC
+
+  Please recheck them and remove the unnecessary options from the
+  `vcpkg_cmake_configure` call.
+
+  If these options should still be passed for whatever reason, please use the
+  `MAYBE_UNUSED_VARIABLES` argument.
+Call Stack (most recent call first):
+  ports/protobuf/portfile.cmake:52 (vcpkg_cmake_configure)
+  scripts/ports.cmake:209 (include)
+
+
+-- Building x64-linux-static-dbg
+-- Building x64-linux-static-rel
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/lib/pkgconfig/protobuf-lite.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/lib/pkgconfig/protobuf.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/debug/lib/pkgconfig/protobuf-lite.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/debug/lib/pkgconfig/protobuf.pc
+-- Installing: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/share/protobuf/copyright
+-- Adjusted RPATH of '/home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/protobuf_x64-linux-static/tools/protobuf/protoc-36.2.0' (From '$ORIGIN:$ORIGIN/../../lib:$ORIGIN/../lib' -> To '$ORIGIN:$ORIGIN/../../lib:$ORIGIN/../lib')
+-- Performing post-build validation
+Starting submission of protobuf:x64-linux-static@7.36.2#1 to 1 binary cache(s) in the background
+Elapsed time to handle protobuf:x64-linux-static: 3.9 min
+Completed submission of protobuf:x64-linux@7.36.2#1 to 1 binary cache(s) in 41 s
+Completed submission of utf8-range:x64-linux-static@7.36.2 to 1 binary cache(s) in 16.6 ms
+Installing 103/104 quirc:x64-linux-static@1.2...
+quirc:x64-linux-static@1.2 package ABI: 4256bcacf2bbbb292ca32160d12dea79d2ba5f6d953190fb257d6add7efa259b
+Building quirc:x64-linux-static@1.2...
+/home/runner/work/VeilFrame/VeilFrame/ci/triplets/x64-linux-static.cmake: info: loaded overlay triplet from here
+Downloading https://github.com/dlbeer/quirc/archive/v1.2.tar.gz -> dlbeer-quirc-v1.2.tar.gz
+Successfully downloaded dlbeer-quirc-v1.2.tar.gz
+-- Extracting source /home/runner/work/VeilFrame/VeilFrame/vcpkg/downloads/dlbeer-quirc-v1.2.tar.gz
+-- Using source at /home/runner/work/VeilFrame/VeilFrame/vcpkg/buildtrees/quirc/src/v1.2-c0eece6a78.clean
+-- Configuring x64-linux-static
+-- Building x64-linux-static-dbg
+-- Building x64-linux-static-rel
+-- Installing: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/quirc_x64-linux-static/share/quirc/copyright
+-- Performing post-build validation
+Starting submission of quirc:x64-linux-static@1.2 to 1 binary cache(s) in the background
+Elapsed time to handle quirc:x64-linux-static: 1.7 s
+Installing 104/104 opencv4[calib3d,core,dnn,fs,gapi,gtk,highgui,intrinsics,jpeg,png,quirc,thread,tiff,v4l,webp]:x64-linux-static@4.14.0...
+opencv4[calib3d,core,dnn,fs,gapi,gtk,highgui,intrinsics,jpeg,png,quirc,thread,tiff,v4l,webp]:x64-linux-static@4.14.0 package ABI: c2cb130c1a18df66297c407d25bba71aa244ce3f977daa8ea35c601b508c6a14
+Building opencv4[calib3d,core,dnn,fs,gapi,gtk,highgui,intrinsics,jpeg,png,quirc,thread,tiff,v4l,webp]:x64-linux-static@4.14.0...
+/home/runner/work/VeilFrame/VeilFrame/ci/triplets/x64-linux-static.cmake: info: loaded overlay triplet from here
+Downloading https://github.com/opencv/opencv/archive/4.14.0.tar.gz -> opencv-opencv-4.14.0.tar.gz
+Successfully downloaded opencv-opencv-4.14.0.tar.gz
+-- Extracting source /home/runner/work/VeilFrame/VeilFrame/vcpkg/downloads/opencv-opencv-4.14.0.tar.gz
+-- Applying patch 0001-disable-downloading.patch
+-- Applying patch 0002-install-options.patch
+-- Applying patch 0003-force-package-requirements.patch
+-- Applying patch 0004-opencl.diff
+-- Applying patch 0005-vulkan.diff
+-- Applying patch 0008-devendor-quirc.patch
+-- Applying patch 0009-fix-protobuf.patch
+-- Applying patch 0010-fix-uwp-tiff-imgcodecs.patch
+-- Applying patch 0012-miss-openexr.patch
+-- Applying patch 0015-fix-freetype.patch
+-- Applying patch 0017-fix-flatbuffers.patch
+-- Applying patch 0021-fix-qt-gen-def.patch
+-- Applying patch 0022-android-use-vcpkg-cpu-features.patch
+-- Applying patch 0025-fix-cuda-host-std-flag-forwarding.patch
+-- Applying patch 0026-cuda-msvc-preprocessor.patch
+-- Applying patch 0028-ffmpeg9-support.patch
+-- Applying patch 0029-dlpack-find-package.patch
+-- Applying patch 0030-kleidicv-install-license.patch
+-- Using source at /home/runner/work/VeilFrame/VeilFrame/vcpkg/buildtrees/opencv4/src/4.14.0-32a78e2488.clean
+Downloading https://github.com/tiny-dnn/tiny-dnn/archive/v1.0.0a3.tar.gz -> opencv-cache/tiny_dnn/adb1c512e09ca2c7a6faef36f9c53e59-v1.0.0a3.tar.gz
+Successfully downloaded opencv-cache/tiny_dnn/adb1c512e09ca2c7a6faef36f9c53e59-v1.0.0a3.tar.gz
+-- Configuring x64-linux-static
+-- Building x64-linux-static-dbg
+-- Building x64-linux-static-rel
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/opencv4_x64-linux-static/lib/pkgconfig/opencv4.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/opencv4_x64-linux-static/debug/lib/pkgconfig/opencv4.pc
+-- Performing post-build validation
+Starting submission of opencv4[calib3d,core,dnn,fs,gapi,gtk,highgui,intrinsics,jpeg,png,quirc,thread,tiff,v4l,webp]:x64-linux-static@4.14.0 to 1 binary cache(s) in the background
+Elapsed time to handle opencv4:x64-linux-static: 15 min
+Total install time: 1 h
+Installed contents are licensed to you by owners. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Some packages did not declare an SPDX license. Check the `copyright` file for each package for more information about their licensing.
+Packages installed in this vcpkg installation declare the following licenses:
+(AFL-2.1 OR GPL-2.0-or-later)
+(BSD-3-Clause OR GPL-2.0-only)
+(FTL OR GPL-2.0-or-later)
+(LGPL-2.1-only OR MPL-1.1)
+0BSD
+Apache-2.0
+BSD-2-Clause
+BSD-3-Clause
+BSD-3-Clause WITH PCRE2-exception
+CC0-1.0
+GPL-3.0-only
+GPL-3.0-or-later
+IJG
+LGPL-2.0-or-later
+LGPL-2.1-or-later
+MIT
+MIT-Modern-Variant
+MIT-open-group
+Unicode-3.0
+X11-distribute-modifications-variant
+Zlib
+bzip2-1.0.6
+libpng-2.0
+libtiff
+opencv4 is compatible with built-in CMake variables. In case of multiple OpenCV version installed, set OpenCV_ROOT *before* the find_package call:
+
+    set(OpenCV_ROOT "${VCPKG_INSTALLED_DIR}/x64-linux-static/share/opencv4")
+    find_package(OpenCV REQUIRED)
+
+Completed submission of protobuf:x64-linux-static@7.36.2#1 to 1 binary cache(s) in 8.3 s
+Completed submission of quirc:x64-linux-static@1.2 to 1 binary cache(s) in 11.1 ms
+Waiting for 1 remaining binary cache submissions...
+Completed submission of opencv4[calib3d,core,dnn,fs,gapi,gtk,highgui,intrinsics,jpeg,png,quirc,thread,tiff,v4l,webp]:x64-linux-static@4.14.0 to 1 binary cache(s) in 27 s (1/1)
+All requested installations completed successfully in: 1 h
+===== errors =====
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-linux/lib/pkgconfig/absl_strerror.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-linux/debug/lib/pkgconfig/absl_strerror.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-linux-static/lib/pkgconfig/absl_strerror.pc
+-- Fixing pkgconfig file: /home/runner/work/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-linux-static/debug/lib/pkgconfig/absl_strerror.pc
+-- Applying patch fix_build_error_windows.patch
+-- Applying patch fix_build_error_windows.patch
