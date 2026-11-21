@@ -27,17 +27,18 @@ curl -sfL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 20 \
   "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/$ver"
 test -s "$tmp/ort.nupkg" || { echo "下载 ONNX Runtime 包为空" >&2; exit 1; }
 
-# 选一个真实可用的 Python，跳过 Windows 的 Microsoft Store 占位别名。
+# 选一个真正能跑的 Python：只看路径会误伤可用的 App 别名，直接执行验证。
 py=""
 for c in python3 python; do
-  p="$(command -v "$c" 2>/dev/null || true)"
-  [ -n "$p" ] || continue
-  case "$p" in *WindowsApps*) continue ;; esac
-  py="$c"
-  break
+  command -v "$c" >/dev/null 2>&1 || continue
+  if "$c" -c "pass" >/dev/null 2>&1; then
+    py="$c"
+    break
+  fi
 done
 [ -n "$py" ] || { echo "找不到可用的 Python 解释器" >&2; exit 1; }
-"$py" - "$tmp/ort.nupkg" "$rid" "$dest" <<'PY'
+# PYTHONUTF8=1：Windows runner 上重定向的 stdout 是 cp1252，中文输出会直接崩。
+PYTHONUTF8=1 "$py" - "$tmp/ort.nupkg" "$rid" "$dest" <<'PY'
 import os
 import shutil
 import sys
