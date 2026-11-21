@@ -15,3 +15,5 @@
 | [0005](0005-smart-render-risk.md) | 智能渲染（GOP 拼接）的风险与分期 | Proposed | 是否先做全量重编码 |
 | [0006](0006-content-hash-strategy.md) | 视频内容哈希策略 | Proposed | 完整 SHA-1 还是抽样哈希 |
 | [0007](0007-performance-targets.md) | 性能指标：文档中的数字是估算 | Proposed | 以什么作为验收标准 |
+| [0008](0008-single-session-snapshot.md) | 单会话、快照驱动的 Tauri 外壳 | Accepted | — |
+| [0009](0009-batch-queue.md) | 批量队列按独立会话执行，复核导出保持人工 | Accepted | — |

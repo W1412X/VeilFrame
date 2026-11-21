@@ -41,6 +41,18 @@ pub enum Engine {
     Ocr,
 }
 
+/// 文本目标的匹配模式（与 `vf-text::MatchMode` 对应）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TextMatchMode {
+    #[default]
+    Contains,
+    Exact,
+    Regex,
+    /// 编辑距离不超过 `Target::fuzzy_edits` 的子串匹配。
+    Fuzzy,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MaskKind {
@@ -83,9 +95,18 @@ pub struct Target {
     pub name: String,
     pub kind: TargetKind,
     pub color: String,
-    /// 图像目标的模板变体，相对项目目录的路径。
+    /// 图像目标的模板变体。绝对路径，或相对项目文件所在目录。
     #[serde(default)]
     pub variants: Vec<String>,
+    /// 文本目标的模式串（仅 `kind == text` 使用）。
+    #[serde(default)]
+    pub pattern: Option<String>,
+    /// 文本目标的匹配模式（仅 `kind == text` 使用）。
+    #[serde(default)]
+    pub match_mode: TextMatchMode,
+    /// 模糊匹配允许的编辑距离（仅 `match_mode == fuzzy` 使用）。
+    #[serde(default = "default_fuzzy_edits")]
+    pub fuzzy_edits: u32,
     pub engine: Engine,
     pub mode: Mode,
     pub threshold: f64,
@@ -166,6 +187,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_fuzzy_edits() -> u32 {
+    1
+}
+
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum ProjectError {
     #[error("重复的 id：{0}")]
@@ -180,6 +205,10 @@ pub enum ProjectError {
     BadThreshold(String),
     #[error("目标 {0} 的打码强度必须在 0.0..=1.0 之间")]
     BadStrength(String),
+    #[error("文本目标 {0} 缺少匹配模式串")]
+    MissingPattern(String),
+    #[error("目标 {0} 的模糊编辑距离必须大于 0")]
+    BadFuzzyEdits(String),
     #[error("不支持的项目格式版本：{0}")]
     UnsupportedVersion(u32),
     #[error("读写项目文件失败：{0}")]
@@ -224,6 +253,15 @@ impl Project {
             }
             if !(0.0..=1.0).contains(&t.style.strength) {
                 return Err(ProjectError::BadStrength(t.id.clone()));
+            }
+            if t.kind == TargetKind::Text {
+                match t.pattern.as_deref() {
+                    Some(p) if !p.trim().is_empty() => {}
+                    _ => return Err(ProjectError::MissingPattern(t.id.clone())),
+                }
+                if t.match_mode == TextMatchMode::Fuzzy && t.fuzzy_edits == 0 {
+                    return Err(ProjectError::BadFuzzyEdits(t.id.clone()));
+                }
             }
         }
 
@@ -302,6 +340,9 @@ mod tests {
             kind: TargetKind::Text,
             color: "#d1495b".to_string(),
             variants: vec![],
+            pattern: Some("机密".to_string()),
+            match_mode: TextMatchMode::Contains,
+            fuzzy_edits: 1,
             engine: Engine::Ocr,
             mode: Mode::Standard,
             threshold: 0.6,
@@ -386,6 +427,46 @@ mod tests {
         let mut p = project_with_video();
         p.targets[0].threshold = 1.5;
         assert!(matches!(p.validate(), Err(ProjectError::BadThreshold(_))));
+    }
+
+    #[test]
+    fn text_target_requires_pattern() {
+        let mut p = project_with_video();
+        p.targets[0].pattern = None;
+        assert!(matches!(p.validate(), Err(ProjectError::MissingPattern(_))));
+
+        p.targets[0].pattern = Some("  ".into());
+        assert!(matches!(p.validate(), Err(ProjectError::MissingPattern(_))));
+    }
+
+    #[test]
+    fn fuzzy_mode_requires_positive_edits() {
+        let mut p = project_with_video();
+        p.targets[0].match_mode = TextMatchMode::Fuzzy;
+        p.targets[0].fuzzy_edits = 0;
+        assert!(matches!(p.validate(), Err(ProjectError::BadFuzzyEdits(_))));
+
+        p.targets[0].fuzzy_edits = 2;
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn old_json_without_new_fields_still_parses() {
+        // 兼容没有 pattern / match_mode 字段的旧文件（文本目标在解析后校验时报缺失）
+        let json = r##"{
+            "format_version": 1,
+            "video": null,
+            "targets": [{
+                "id": "t1", "name": "x", "kind": "image", "color": "#fff",
+                "engine": "auto", "mode": "standard", "threshold": 0.6,
+                "style": {"kind":"mosaic","strength":0.5,"padding":0,"feather":false,"motion_pad":false}
+            }],
+            "segments": []
+        }"##;
+        let p: Project = serde_json::from_str(json).unwrap();
+        assert_eq!(p.targets[0].match_mode, TextMatchMode::Contains);
+        assert_eq!(p.targets[0].fuzzy_edits, 1);
+        assert!(p.validate().is_ok());
     }
 
     #[test]

@@ -24,6 +24,7 @@ import {
   mdiVideoOutline,
   mdiFolderOpenOutline,
   mdiContentSaveOutline,
+  mdiRadar,
 } from '@mdi/js';
 
 /** MDI 图标。路径来自 @mdi/js，不依赖网络字体。 */
@@ -53,6 +54,7 @@ const PATHS = {
   videoOpen: mdiVideoOutline,
   folderOpen: mdiFolderOpenOutline,
   save: mdiContentSaveOutline,
+  scan: mdiRadar,
 } as const;
 
 export type IconName = keyof typeof PATHS;

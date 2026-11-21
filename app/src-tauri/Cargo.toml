@@ -9,14 +9,17 @@ publish = false
 
 [lib]
 name = "veilframe_lib"
-crate_type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2" }
 
 [dependencies]
-tauri = { version = "2" }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 vf-project = { path = "../../crates/vf-project" }
+vf-session = { path = "../../crates/vf-session" }
+vf-export = { path = "../../crates/vf-export" }
 vf-media = { path = "../../crates/vf-media" }
+vf-queue = { path = "../../crates/vf-queue" }

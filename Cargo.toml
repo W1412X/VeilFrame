@@ -14,6 +14,7 @@ members = [
   "crates/vf-ocr",
   "crates/vf-pipeline",
   "crates/vf-export",
+  "crates/vf-session",
 ]
 # Tauri 外壳有独立的 workspace，需要 WebKitGTK，不在这里编译
 exclude = ["app/src-tauri"]

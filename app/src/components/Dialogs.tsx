@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import type { TargetKind } from '../domain/types';
+import type { TargetKind, TextMatchMode } from '../domain/types';
 
 interface ExportProps {
   pendingCount: number;
@@ -11,10 +11,9 @@ export interface ExportOptions {
   codec: 'libx264' | 'h264_nvenc' | 'h264_qsv' | 'h264_amf';
   crf: number;
   pendingPolicy: 'mask' | 'confirmedOnly';
-  audio: 'copy';
 }
 
-/** 导出对话框。选项会在导出命令接入后端时使用。 */
+/** 导出对话框。参数直接传给后端 `export_video`。 */
 export function ExportDialog({ pendingCount, onCancel, onExport }: ExportProps) {
   const [codec, setCodec] = useState<ExportOptions['codec']>('libx264');
   const [crf, setCrf] = useState(18);
@@ -49,7 +48,7 @@ export function ExportDialog({ pendingCount, onCancel, onExport }: ExportProps) 
       </Field>
       <div className="foot">
         <button onClick={onCancel}>取消</button>
-        <button className="primary" onClick={() => onExport({ codec, crf, pendingPolicy, audio: 'copy' })}>
+        <button className="primary" onClick={() => onExport({ codec, crf, pendingPolicy })}>
           导出
         </button>
       </div>
@@ -57,9 +56,18 @@ export function ExportDialog({ pendingCount, onCancel, onExport }: ExportProps) 
   );
 }
 
+export interface NewTargetInput {
+  name: string;
+  kind: TargetKind;
+  pattern?: string;
+  matchMode: TextMatchMode;
+  template?: string;
+}
+
 interface NewTargetProps {
   onCancel: () => void;
-  onCreate: (name: string, kind: TargetKind) => void;
+  onCreate: (input: NewTargetInput) => void;
+  pickTemplate: () => Promise<string | null>;
 }
 
 const KIND_OPTIONS: { value: TargetKind; label: string }[] = [
@@ -68,10 +76,22 @@ const KIND_OPTIONS: { value: TargetKind; label: string }[] = [
   { value: 'region', label: '固定区域' },
 ];
 
-export function NewTargetDialog({ onCancel, onCreate }: NewTargetProps) {
+const MATCH_OPTIONS: { value: TextMatchMode; label: string }[] = [
+  { value: 'contains', label: '包含' },
+  { value: 'exact', label: '精确' },
+  { value: 'fuzzy', label: '模糊' },
+];
+
+export function NewTargetDialog({ onCancel, onCreate, pickTemplate }: NewTargetProps) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState<TargetKind>('text');
-  const canCreate = name.trim().length > 0;
+  const [pattern, setPattern] = useState('');
+  const [matchMode, setMatchMode] = useState<TextMatchMode>('contains');
+  const [template, setTemplate] = useState<string | null>(null);
+  const canCreate =
+    name.trim().length > 0 &&
+    (kind !== 'text' || pattern.trim().length > 0) &&
+    (kind !== 'image' || template !== null);
 
   return (
     <Dialog title="新建目标" onClose={onCancel}>
@@ -87,9 +107,55 @@ export function NewTargetDialog({ onCancel, onCreate }: NewTargetProps) {
           ))}
         </select>
       </Field>
+      {kind === 'text' && (
+        <>
+          <Field label="匹配串">
+            <input type="text" value={pattern} placeholder="要打码的文字" onChange={(e) => setPattern(e.target.value)} />
+          </Field>
+          <Field label="匹配方式">
+            <div className="seg">
+              {MATCH_OPTIONS.map((m) => (
+                <button key={m.value} className={matchMode === m.value ? 'on' : ''} onClick={() => setMatchMode(m.value)}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </>
+      )}
+      {kind === 'image' && (
+        <Field label="模板图">
+          <div className="file-row">
+            <span>{template ? template.split(/[\\/]/).pop() : '未选择'}</span>
+            <button
+              className="sm"
+              onClick={async () => {
+                const p = await pickTemplate();
+                if (p) setTemplate(p);
+              }}
+            >
+              选择…
+            </button>
+          </div>
+          <div className="muted small">模板图覆盖目标在画面中的外观；多个模板可在属性栏继续添加。</div>
+        </Field>
+      )}
+      {kind === 'region' && <div className="muted small">创建后在画面上拖拽框选区域，扫描会生成覆盖全片的一段。</div>}
       <div className="foot">
         <button onClick={onCancel}>取消</button>
-        <button className="primary" disabled={!canCreate} onClick={() => onCreate(name.trim(), kind)}>
+        <button
+          className="primary"
+          disabled={!canCreate}
+          onClick={() =>
+            onCreate({
+              name: name.trim(),
+              kind,
+              pattern: kind === 'text' ? pattern.trim() : undefined,
+              matchMode,
+              template: kind === 'image' ? template ?? undefined : undefined,
+            })
+          }
+        >
           添加
         </button>
       </div>

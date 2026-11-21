@@ -10,12 +10,16 @@ export type Engine =
   | 'super_point_light_glue'
   | 'shape_edge'
   | 'ocr';
+export type TextMatchMode = 'contains' | 'exact' | 'regex' | 'fuzzy';
 export type MaskKind = 'mosaic' | 'blur' | 'solid' | 'image';
 export type SegmentStatus = 'confirmed' | 'pending' | 'low' | 'rejected';
 export type Source = 'auto' | 'manual';
 
 /** 四边形：左上、右上、右下、左下，视频像素坐标。 */
 export type Quad = [[number, number], [number, number], [number, number], [number, number]];
+
+/** 视频像素坐标下的搜索/打码区域 `[x, y, w, h]`；null 表示整帧。 */
+export type Roi = [number, number, number, number] | null;
 
 export interface Style {
   kind: MaskKind;
@@ -32,10 +36,18 @@ export interface Target {
   name: string;
   kind: TargetKind;
   color: string;
+  /** 图像目标的模板文件路径（绝对路径或相对项目文件）。 */
+  variants: string[];
+  /** 文本目标的匹配串。 */
+  pattern: string | null;
+  match_mode: TextMatchMode;
+  /** 模糊匹配允许的编辑距离。 */
+  fuzzy_edits: number;
   engine: Engine;
   mode: Mode;
   /** 0.0 ~ 1.0 */
   threshold: number;
+  roi: Roi;
   style: Style;
   enabled: boolean;
 }
@@ -68,9 +80,15 @@ export interface Video {
   height: number;
 }
 
+export interface Render {
+  codec: string;
+  smart_render: boolean;
+}
+
 export interface Project {
   format_version: number;
   video: Video | null;
   targets: Target[];
   segments: Segment[];
+  render: Render;
 }

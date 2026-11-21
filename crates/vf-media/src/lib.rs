@@ -10,6 +10,19 @@ use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// 构造媒体子进程命令。Windows 上隐藏控制台窗口，避免桌面应用执行时闪出黑框。
+pub fn media_command(bin: &Path) -> Command {
+    #[allow(unused_mut)]
+    let mut cmd = Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 /// 视频基础元数据。
 #[derive(Debug, Clone, PartialEq)]
 pub struct VideoInfo {
@@ -125,7 +138,7 @@ impl Default for FfprobeBackend {
 
 impl MediaBackend for FfprobeBackend {
     fn probe(&self, path: &Path) -> Result<VideoInfo, MediaError> {
-        let output = Command::new(&self.bin)
+        let output = media_command(&self.bin)
             .args(["-v", "error", "-print_format", "json", "-show_format", "-show_streams"])
             .arg(path)
             .output()
@@ -223,7 +236,7 @@ pub fn frame_extract_args(input: &Path, req: FrameRequest) -> Vec<String> {
 
 /// 通过 ffmpeg 抽取一帧，返回长度为 `width * height * 3` 的 RGB 数据。
 pub fn extract_frame_rgb(ffmpeg: &Path, input: &Path, req: FrameRequest) -> Result<Vec<u8>, MediaError> {
-    let output = Command::new(ffmpeg)
+    let output = media_command(ffmpeg)
         .args(frame_extract_args(input, req))
         .output()
         .map_err(|e| MediaError::Spawn { bin: ffmpeg.display().to_string(), reason: e.to_string() })?;

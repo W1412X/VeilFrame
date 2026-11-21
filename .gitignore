@@ -2,6 +2,16 @@
 target/
 **/target/
 
+# Tauri 生成物（CI 重新生成）
+app/src-tauri/gen/
+
+# 随包二进制由 CI 填充，只保留占位文件与 OCR 字典
+app/src-tauri/resources/bin/*
+app/src-tauri/resources/models/*
+app/src-tauri/resources/onnxruntime/*
+!app/src-tauri/resources/**/.gitkeep
+!app/src-tauri/resources/models/ppocr_keys_v5_onnx.txt
+
 # 前端依赖与构建产物
 node_modules/
 app/dist/

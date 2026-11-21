@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VeilFrame 图标方案</title>
+<style>
+  :root {
+    --accent: #4C7DFF;
+    --tile: #0C0F14;
+    --radius: 24%;
+    --page: #0b0e13;
+    --panel: #12161e;
+    --panel-2: #171c26;
+    --line: #252c39;
+    --text: #e8ebf2;
+    --muted: #8b94a7;
+    --sel: #4C7DFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--text);
+    font: 14px/1.6 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 28px 56px; }
+  header h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: .2px; }
+  header p { margin: 0; color: var(--muted); max-width: 760px; }
+  .tag { display: inline-block; margin-right: 8px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 22px 34px;
+    margin: 24px 0 26px; padding: 16px 18px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  }
+  .ctl { display: flex; align-items: center; gap: 12px; }
+  .ctl-label { color: var(--muted); font-size: 13px; }
+  .swatches { display: flex; gap: 8px; }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+    background: var(--c); cursor: pointer; padding: 0; position: relative;
+  }
+  .swatch::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid transparent; }
+  .swatch.on::after { border-color: var(--c); }
+  .swatch[data-mono="1"] { box-shadow: inset 0 0 0 1px #0006; }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    padding: 5px 12px; border-radius: 7px; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  .seg button.on { background: #2a3242; color: var(--text); }
+  .seg button:disabled { opacity: .38; cursor: not-allowed; }
+
+  main { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 26px; align-items: start; }
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .opt {
+    appearance: none; text-align: left; font: inherit; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px 14px 14px; cursor: pointer; transition: border-color .18s, background .18s;
+  }
+  .opt:hover { background: var(--panel-2); }
+  .opt.on { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); }
+  .opt-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .opt-name { font-weight: 600; font-size: 15px; }
+  .badge { font-size: 11px; color: var(--sel); border: 1px solid currentColor; border-radius: 999px; padding: 0 7px; opacity: .9; }
+  .opt-desc { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .opt-icon { margin: 10px 0 4px; display: flex; justify-content: center; }
+
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; min-width: 0; }
+  .stage-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stage-head h2 { font-size: 17px; margin: 0; }
+  .stage-head .muted { color: var(--muted); font-size: 12.5px; }
+  .stage-head .sp { flex: 1; }
+  .download {
+    appearance: none; font: inherit; font-size: 12.5px; color: var(--text); cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px;
+  }
+  .download:hover { border-color: #3a4456; }
+
+  .hero {
+    display: grid; place-items: center; min-height: 280px;
+    border-radius: 14px; border: 1px solid var(--line);
+    background: #0a0d12;
+  }
+
+  .sizes { display: flex; align-items: flex-end; gap: 22px; margin: 18px 0 4px; padding: 14px 4px 4px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .size { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .size b { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  .contexts { margin-top: 16px; }
+  .ctx { display: flex; align-items: center; gap: 14px; border-radius: 12px; padding: 12px 16px; margin-top: 10px; font-size: 13px; }
+  .ctx.dark { background: #090b0f; border: 1px solid #1b202a; color: #d7dce6; }
+  .ctx.light { background: #eef1f6; border: 1px solid #dfe4ec; color: #202634; }
+  .ctx-label { width: 86px; opacity: .55; font-size: 12px; flex: none; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 6px; border-radius: 9px; }
+  .ctx.dark .chip { background: #141922; }
+  .ctx.light .chip { background: #ffffff; box-shadow: 0 1px 2px #00000012; }
+  .chip span { font-size: 12.5px; }
+
+  footer { margin-top: 30px; color: var(--muted); font-size: 12.5px; }
+  footer code { color: #b9c2d4; background: var(--panel); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; }
+
+  /* 图标本体 */
+  .tile {
+    background: var(--tile); border-radius: var(--radius);
+    display: grid; place-items: center; flex: none;
+    box-shadow: inset 0 0 0 1px #ffffff0d;
+  }
+  .glyph { width: 78%; height: 78%; display: grid; place-items: center; }
+  .glyph svg { width: 100%; height: 100%; display: block; }
+
+  @media (max-width: 900px) {
+    .wrap { padding: 24px 16px 40px; }
+    main { grid-template-columns: 1fr; }
+    .options { grid-template-columns: 1fr 1fr; }
+    .hero { min-height: 220px; }
+  }
+  @media (max-width: 520px) {
+    .options { grid-template-columns: 1fr; }
+    .controls { gap: 14px 18px; }
+    .ctl { width: 100%; flex-wrap: wrap; }
+    .sizes { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>VeilFrame 图标方案</h1>
+    <p><span class="tag">本地离线 · 视频打码</span>点选方案看大图；主题色、底色、外形实时切换。选定后我用同一套矢量生成 PNG / ICO / ICNS 并接回应用。</p>
+  </header>
+
+  <section class="controls">
+    <div class="ctl">
+      <span class="ctl-label">主题色</span>
+      <div class="swatches" id="themes"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">底色</span>
+      <div class="seg" id="bgs">
+        <button data-bg="dark">深色</button>
+        <button data-bg="light">浅色</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">外形</span>
+      <div class="seg" id="shapes">
+        <button data-shape="rounded">圆角</button>
+        <button data-shape="circle">圆形</button>
+        <button data-shape="square">直角</button>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="options" id="options"></section>
+
+    <section class="stage">
+      <div class="stage-head">
+        <h2 id="stageName"></h2>
+        <span class="muted" id="stageDesc"></span>
+        <span class="sp"></span>
+        <button class="download" id="download">下载当前 SVG</button>
+      </div>
+      <div class="hero" id="hero"></div>
+      <div class="sizes" id="sizes"></div>
+      <div class="contexts">
+        <div class="ctx dark">
+          <span class="ctx-label">深色界面</span>
+          <span class="chip" id="chip-dark-1"></span>
+          <span class="chip" id="chip-dark-2"></span>
+          <span class="chip" id="chip-dark-3"></span>
+        </div>
+        <div class="ctx light">
+          <span class="ctx-label">浅色界面</span>
+          <span class="chip" id="chip-light-1"></span>
+          <span class="chip" id="chip-light-2"></span>
+          <span class="chip" id="chip-light-3"></span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    小尺寸优先看 <code>32</code> / <code>16</code>。纯黑、纯白方案会自动固定底色；其余主题色跟随底色切换。选定后告诉我编号即可。
+  </footer>
+</div>
+
+<script>
+const THEMES = [
+  { id: 'indigo', name: '靛蓝', color: '#4C7DFF' },
+  { id: 'teal',   name: '青绿', color: '#2A9D8F' },
+  { id: 'red',    name: '朱红', color: '#D1495B' },
+  { id: 'amber',  name: '琥珀', color: '#E09F3E' },
+  { id: 'white',  name: '纯白', color: '#F4F6FA', fixedBg: 'dark' },
+  { id: 'black',  name: '纯黑', color: '#0A0C10', fixedBg: 'light' },
+];
+
+const TILES = { dark: '#0C0F14', light: '#F2F4F8' };
+
+const RADII = { rounded: '24%', circle: '50%', square: '10%' };
+
+const OPTIONS = [
+  { id: 'veil',  name: '幕布',     badge: '默认', desc: '视频框 + 一条马赛克带，最直白地表达“把画面遮住”。' },
+  { id: 'play',  name: '播放遮罩', desc: '播放键的右侧被像素吞掉，视频与打码合二为一。' },
+  { id: 'text',  name: '文本打码', desc: '文字行收尾成像素块，对应 OCR 文本目标的场景。' },
+  { id: 'diag',  name: '斜向遮罩', desc: '两段角框 + 斜向像素带，留白多，缩小后依然成立。' },
+];
+
+// 512 × 512 画布，全部纯色平涂；var(--accent) / var(--tile) 由页面实时注入。
+const BODIES = {
+  veil: `
+    <rect x="100" y="116" width="312" height="280" rx="34" fill="none" stroke="var(--accent)" stroke-width="28"/>
+    <g fill="var(--accent)">
+      <rect x="142" y="218" width="52" height="52"/>
+      <rect x="206" y="218" width="52" height="52" opacity=".55"/>
+      <rect x="270" y="218" width="52" height="52"/>
+      <rect x="334" y="218" width="52" height="52" opacity=".55"/>
+      <rect x="174" y="282" width="52" height="52" opacity=".55"/>
+      <rect x="238" y="282" width="52" height="52"/>
+      <rect x="302" y="282" width="52" height="52" opacity=".55"/>
+    </g>`,
+  play: `
+    <path d="M196 138 L196 374 L390 256 Z" fill="var(--accent)" stroke="var(--accent)" stroke-width="30" stroke-linejoin="round"/>
+    <g fill="var(--tile)">
+      <rect x="266" y="206" width="46" height="46"/>
+      <rect x="322" y="206" width="46" height="46"/>
+      <rect x="294" y="262" width="46" height="46"/>
+      <rect x="350" y="262" width="46" height="46"/>
+    </g>`,
+  text: `
+    <g fill="var(--accent)">
+      <rect x="112" y="152" width="196" height="48" rx="16"/>
+      <rect x="112" y="232" width="140" height="48" rx="16"/>
+      <rect x="112" y="312" width="168" height="48" rx="16"/>
+      <rect x="324" y="152" width="48" height="48"/>
+      <rect x="380" y="152" width="48" height="48" opacity=".55"/>
+      <rect x="268" y="232" width="48" height="48" opacity=".55"/>
+      <rect x="324" y="232" width="48" height="48"/>
+      <rect x="296" y="312" width="48" height="48"/>
+      <rect x="352" y="312" width="48" height="48" opacity=".55"/>
+    </g>`,
+  diag: `
+    <path d="M100 196 V116 H180" fill="none" stroke="var(--accent)" stroke-width="30"/>
+    <path d="M412 316 V396 H332" fill="none" stroke="var(--accent)" stroke-width="30"/>
+    <g fill="var(--accent)">
+      <rect x="142" y="322" width="56" height="56" opacity=".55"/>
+      <rect x="206" y="264" width="56" height="56"/>
+      <rect x="270" y="206" width="56" height="56" opacity=".55"/>
+      <rect x="334" y="148" width="56" height="56"/>
+    </g>`,
+};
+
+const query = new URLSearchParams(location.search);
+const state = {
+  option: OPTIONS.some((o) => o.id === query.get('option')) ? query.get('option') : 'veil',
+  theme: THEMES.some((t) => t.id === query.get('theme')) ? query.get('theme') : 'indigo',
+  bg: query.get('bg') === 'light' ? 'light' : 'dark',
+  shape: ['rounded', 'circle', 'square'].includes(query.get('shape')) ? query.get('shape') : 'rounded',
+};
+
+const $ = (s) => document.querySelector(s);
+const themeOf = () => THEMES.find((t) => t.id === state.theme);
+const tileColor = () => {
+  const t = themeOf();
+  return TILES[t.fixedBg || state.bg];
+};
+
+function svg(id) {
+  return `<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">${BODIES[id]}</svg>`;
+}
+
+function tile(id, px, extra = '') {
+  return `<span class="tile ${extra}" style="width:${px}px;height:${px}px"><span class="glyph">${svg(id)}</span></span>`;
+}
+
+function applyVars() {
+  const t = themeOf();
+  const root = document.documentElement.style;
+  root.setProperty('--accent', t.color);
+  root.setProperty('--tile', tileColor());
+  root.setProperty('--radius', RADII[state.shape]);
+  root.setProperty('--sel', t.color === '#0A0C10' ? '#7d8aa3' : t.color);
+  $('#bgs').querySelectorAll('button').forEach((b) => {
+    b.disabled = !!t.fixedBg;
+    b.classList.toggle('on', (t.fixedBg || state.bg) === b.dataset.bg);
+  });
+  $('#shapes').querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('on', state.shape === b.dataset.shape);
+  });
+  document.querySelectorAll('.swatch').forEach((s) => {
+    s.classList.toggle('on', s.dataset.theme === state.theme);
+  });
+}
+
+function render() {
+  applyVars();
+
+  $('#options').innerHTML = OPTIONS.map((o) => `
+    <button class="opt ${o.id === state.option ? 'on' : ''}" data-option="${o.id}">
+      <div class="opt-top">
+        <span class="opt-name">${o.name}</span>
+        ${o.badge ? `<span class="badge">${o.badge}</span>` : ''}
+      </div>
+      <div class="opt-icon">${tile(o.id, 86)}</div>
+      <p class="opt-desc">${o.desc}</p>
+    </button>
+  `).join('');
+
+  const opt = OPTIONS.find((o) => o.id === state.option);
+  $('#stageName').textContent = opt.name;
+  $('#stageDesc').textContent = opt.desc;
+  $('#hero').innerHTML = tile(opt.id, window.innerWidth < 520 ? 172 : 224);
+  $('#sizes').innerHTML = [128, 64, 32, 16].map((n) =>
+    `<div class="size">${tile(opt.id, n)}<b>${n}px</b></div>`
+  ).join('');
+
+  const chips = [
+    { px: 30, label: 'VeilFrame' },
+    { px: 22, label: '批量队列' },
+    { px: 16, label: '复核' },
+  ];
+  ['dark', 'light'].forEach((mode) => {
+    chips.forEach((c, i) => {
+      const el = document.getElementById(`chip-${mode}-${i + 1}`);
+      el.innerHTML = `${tile(opt.id, c.px)}<span>${c.label}</span>`;
+    });
+  });
+
+  applyVars();
+}
+
+$('#themes').innerHTML = THEMES.map((t) => `
+  <button class="swatch" data-theme="${t.id}" data-mono="${t.fixedBg ? 1 : 0}"
+    title="${t.name}" aria-label="${t.name}" style="--c:${t.color}"></button>
+`).join('');
+
+$('#themes').addEventListener('click', (e) => {
+  const b = e.target.closest('.swatch');
+  if (!b) return;
+  state.theme = b.dataset.theme;
+  render();
+});
+
+$('#bgs').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  state.bg = b.dataset.bg;
+  render();
+});
+
+$('#shapes').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  state.shape = b.dataset.shape;
+  render();
+});
+
+$('#options').addEventListener('click', (e) => {
+  const b = e.target.closest('.opt');
+  if (!b) return;
+  state.option = b.dataset.option;
+  render();
+});
+
+$('#download').addEventListener('click', () => {
+  const t = themeOf();
+  const bg = tileColor();
+  const rx = state.shape === 'circle' ? 256 : state.shape === 'square' ? 40 : 112;
+  const body = BODIES[state.option]
+    .replaceAll('var(--accent)', t.color)
+    .replaceAll('var(--tile)', bg);
+  const doc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="${rx}" fill="${bg}"/>${body}</svg>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([doc], { type: 'image/svg+xml' }));
+  a.download = `veilframe-${state.option}-${state.theme}-${state.shape}.svg`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const last = w < 520 ? 's' : 'l';
+  if (window._bp !== last) { window._bp = last; render(); }
+}, { passive: true });
+
+render();
+</script>
+</body>
+</html>

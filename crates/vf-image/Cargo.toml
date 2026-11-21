@@ -6,5 +6,5 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc"] }
+opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc", "imgcodecs"] }
 thiserror.workspace = true

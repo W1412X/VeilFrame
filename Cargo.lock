@@ -669,6 +669,7 @@ dependencies = [
  "vf-cache",
  "vf-fusion",
  "vf-image",
+ "vf-media",
  "vf-project",
  "vf-text",
  "vf-vision",
@@ -698,6 +699,27 @@ dependencies = [
  "thiserror",
  "vf-image",
  "vf-project",
+]
+
+[[package]]
+name = "vf-session"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "opencv",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "vf-cache",
+ "vf-core",
+ "vf-export",
+ "vf-image",
+ "vf-media",
+ "vf-ocr",
+ "vf-pipeline",
+ "vf-project",
+ "vf-text",
+ "vf-vision",
 ]
 
 [[package]]

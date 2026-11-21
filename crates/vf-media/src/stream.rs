@@ -3,7 +3,7 @@
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdout, Stdio};
 
 use crate::{MediaBackend, MediaError};
 
@@ -37,7 +37,7 @@ impl FrameStream {
         if size.is_some() {
             filters.push(format!("scale={width}:{height}"));
         }
-        let mut cmd = Command::new(ffmpeg);
+        let mut cmd = crate::media_command(ffmpeg);
         cmd.args(["-v", "error", "-i"]).arg(input);
         if !filters.is_empty() {
             cmd.args(["-vf", &filters.join(",")]);

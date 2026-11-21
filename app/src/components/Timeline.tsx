@@ -1,6 +1,6 @@
 import type { CSSProperties, PointerEvent } from 'react';
 import type { Project } from '../domain/types';
-import { nextPending } from '../domain/editor';
+import { nextPending } from '../domain/segments';
 
 interface Props {
   project: Project;

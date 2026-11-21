@@ -50,11 +50,20 @@ input[type="checkbox"] { accent-color: var(--acc); margin-right: 6px; }
   grid-template-rows: 52px minmax(0, 1fr) 236px;
   position: relative;
 }
+.app.empty { grid-template-rows: 52px minmax(0, 1fr); }
 .topbar {
   display: flex; align-items: center; gap: 10px; padding: 0 16px;
   background: var(--card); border-bottom: 1px solid var(--line);
 }
 .brand { font-weight: 700; letter-spacing: 0.2px; margin-right: 12px; }
+.path {
+  max-width: clamp(140px, 34vw, 560px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.warn-text {
+  font-size: 12px; color: #a86500; border: 1px solid #f0d9b5; background: #fdf6ea;
+  border-radius: 10px; padding: 1px 8px; cursor: help; white-space: nowrap;
+}
 .body {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 300px;
@@ -64,6 +73,8 @@ input[type="checkbox"] { accent-color: var(--acc); margin-right: 6px; }
 /* 左侧目标列表 */
 .sidebar { background: var(--card); border-right: 1px solid var(--line); padding: 18px; overflow: auto; }
 .sec { font-size: 12px; color: var(--mute); font-weight: 600; margin: 0 0 10px; }
+.sec-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.sec-row .sec { margin: 0; }
 .tg {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
 }
@@ -85,6 +96,22 @@ input[type="checkbox"] { accent-color: var(--acc); margin-right: 6px; }
 .shape { position: absolute; background: rgba(255, 255, 255, 0.07); border-radius: 4px; }
 .overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
 .overlay .seg { cursor: pointer; }
+.video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+  background: #000; display: block;
+}
+.stage-empty {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px; color: #cfd3da; text-align: center; padding: 24px;
+}
+.stage-empty small { color: #8b919b; }
+.welcome {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  text-align: center; padding: 40px;
+}
+.welcome h2 { margin: 0; font-size: 22px; }
+.welcome p { margin: 0; }
+.welcome .btns { justify-content: center; margin-top: 10px; }
 .orig-badge {
   position: absolute; left: 32px; top: 32px; background: rgba(0, 0, 0, 0.6); color: #fff;
   padding: 3px 8px; border-radius: 4px; font-size: 12px;
@@ -114,6 +141,13 @@ input[type="checkbox"] { accent-color: var(--acc); margin-right: 6px; }
 .badge.pending, .badge.low { border-color: var(--warn); color: #b58a00; }
 .badge.low { border-style: dashed; }
 .badge.rejected { color: var(--sub); }
+.badge.scanning { border-color: var(--acc); color: var(--acc); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.file-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 0; border-bottom: 1px dashed var(--line); font-size: 13px;
+}
+.file-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 时间轴 */
 .timeline { background: var(--card); border-top: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }

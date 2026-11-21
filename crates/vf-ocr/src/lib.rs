@@ -243,6 +243,13 @@ impl OcrEngine for PpOcr {
     }
 }
 
+/// 允许把一次加载的 OCR 引擎借给多个目标顺序扫描，避免反复加载模型。
+impl<'a> OcrEngine for &'a mut PpOcr {
+    fn recognize(&mut self, width: usize, height: usize, rgb: &[u8]) -> Result<Vec<OcrLine>, String> {
+        (**self).recognize(width, height, rgb)
+    }
+}
+
 fn load_dict(path: &Path) -> Result<Vec<String>, OcrError> {
     let text = std::fs::read_to_string(path).map_err(|e| OcrError::Dict(e.to_string()))?;
     let dict: Vec<String> = text.lines().map(|l| l.trim_end_matches('\r').to_string()).filter(|l| !l.is_empty()).collect();

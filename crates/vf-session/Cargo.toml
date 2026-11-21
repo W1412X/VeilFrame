@@ -1,0 +1,23 @@
+[package]
+name = "vf-session"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+vf-project = { path = "../vf-project" }
+vf-core = { path = "../vf-core" }
+vf-media = { path = "../vf-media" }
+vf-image = { path = "../vf-image" }
+vf-vision = { path = "../vf-vision" }
+vf-text = { path = "../vf-text" }
+vf-ocr = { path = "../vf-ocr" }
+vf-pipeline = { path = "../vf-pipeline" }
+vf-export = { path = "../vf-export" }
+vf-cache = { path = "../vf-cache" }
+opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc", "imgcodecs"] }
+blake3.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

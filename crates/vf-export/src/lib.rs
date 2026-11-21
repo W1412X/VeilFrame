@@ -5,11 +5,12 @@
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use vf_image::{mat_from_rgb, rgb_from_mat};
 use vf_media::stream::FfmpegPaths;
-use vf_media::{FfprobeBackend, MediaBackend};
+use vf_media::{media_command, FfprobeBackend, MediaBackend};
 use vf_project::{Project, Quad, Segment, SegmentStatus};
 use vf_render::{render_region, RenderError};
 
@@ -27,6 +28,8 @@ pub enum ExportError {
     Io(String),
     #[error("项目没有源视频")]
     NoVideo,
+    #[error("导出已取消")]
+    Cancelled,
 }
 
 impl From<opencv::Error> for ExportError {
@@ -42,11 +45,13 @@ pub struct ExportOptions {
     pub codec: String,
     /// 质量参数（CRF，越小质量越高）。
     pub crf: u8,
+    /// 是否连待确认段一起打码。`false` 时只导出已确认（含人工）的段。
+    pub include_pending: bool,
 }
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        Self { ffmpeg: FfmpegPaths::default(), codec: "libx264".into(), crf: 18 }
+        Self { ffmpeg: FfmpegPaths::default(), codec: "libx264".into(), crf: 18, include_pending: true }
     }
 }
 
@@ -87,10 +92,12 @@ fn quad_at(seg: &Segment, t: f64, fps: f64) -> (Quad, f64) {
 }
 
 /// 导出一个项目。`progress` 每处理一帧调用一次，参数为（已处理帧数，总帧数）。
+/// `cancel` 置位后尽快停止，临时文件会被删除并返回 [`ExportError::Cancelled`]。
 pub fn export(
     project: &Project,
     output: &Path,
     opts: &ExportOptions,
+    cancel: &AtomicBool,
     mut progress: impl FnMut(u64, u64),
 ) -> Result<ExportReport, ExportError> {
     let video = project.video.as_ref().ok_or(ExportError::NoVideo)?;
@@ -103,7 +110,7 @@ pub fn export(
     let total = (info.duration * fps).round() as u64;
 
     let tmp = output.with_extension("exporting.mp4");
-    let mut decoder = Command::new(&opts.ffmpeg.ffmpeg)
+    let mut decoder = media_command(&opts.ffmpeg.ffmpeg)
         .args(["-v", "error", "-i"])
         .arg(&input)
         .args(["-an", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
@@ -111,7 +118,7 @@ pub fn export(
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| ExportError::Ffmpeg(e.to_string()))?;
-    let mut encoder = Command::new(&opts.ffmpeg.ffmpeg)
+    let mut encoder = media_command(&opts.ffmpeg.ffmpeg)
         .args(["-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24"])
         .args(["-s", &format!("{w}x{h}"), "-r", &format!("{fps:.6}"), "-i", "-"])
         .arg("-i")
@@ -124,7 +131,7 @@ pub fn export(
         .spawn()
         .map_err(|e| ExportError::Ffmpeg(e.to_string()))?;
 
-    let result = run_frames(project, &mut decoder, &mut encoder, w, h, fps, total, &mut progress);
+    let result = run_frames(project, &mut decoder, &mut encoder, w, h, fps, total, opts.include_pending, cancel, &mut progress);
     // 无论成功与否都要回收子进程
     let _ = decoder.kill();
     let _ = decoder.wait();
@@ -155,6 +162,8 @@ fn run_frames(
     h: usize,
     fps: f64,
     total: u64,
+    include_pending: bool,
+    cancel: &AtomicBool,
     progress: &mut impl FnMut(u64, u64),
 ) -> Result<(u64, u64), ExportError> {
     let mut out = encoder.stdin.take().ok_or_else(|| ExportError::Ffmpeg("无法写入编码器".into()))?;
@@ -165,6 +174,9 @@ fn run_frames(
     let mut masked: u64 = 0;
 
     loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(ExportError::Cancelled);
+        }
         // 读满一帧，不足一帧视为结束
         let mut filled = 0usize;
         while filled < frame_len {
@@ -181,7 +193,7 @@ fn run_frames(
         let t = idx as f64 / fps;
         let mut mat = mat_from_rgb(w, h, &buf)?;
         for seg in &project.segments {
-            if seg.status == SegmentStatus::Rejected || t < seg.t0 || t > seg.t1 {
+            if !should_mask(seg, include_pending) || t < seg.t0 || t > seg.t1 {
                 continue;
             }
             let Some(target) = project.target(&seg.target) else { continue };
@@ -202,12 +214,17 @@ fn run_frames(
     Ok((idx, masked))
 }
 
+/// 该段在当前导出策略下是否打码。
+fn should_mask(seg: &Segment, include_pending: bool) -> bool {
+    seg.status != SegmentStatus::Rejected && (include_pending || seg.status == SegmentStatus::Confirmed)
+}
+
 /// 导出前的统计：有多少段会被打码（用于界面提示）。
-pub fn masked_segment_count(project: &Project) -> usize {
+pub fn masked_segment_count(project: &Project, include_pending: bool) -> usize {
     project
         .segments
         .iter()
-        .filter(|s| s.status != SegmentStatus::Rejected)
+        .filter(|s| should_mask(s, include_pending))
         .filter(|s| project.target(&s.target).map_or(false, |t| t.enabled))
         .count()
 }
@@ -270,6 +287,9 @@ mod tests {
             kind: TargetKind::Text,
             color: "#fff".into(),
             variants: vec![],
+            pattern: Some("x".into()),
+            match_mode: vf_project::TextMatchMode::Contains,
+            fuzzy_edits: 1,
             engine: Engine::Ocr,
             mode: Mode::Standard,
             threshold: 0.6,
@@ -284,8 +304,23 @@ mod tests {
         s2.id = "s2".into();
         s2.status = SegmentStatus::Rejected;
         p.segments = vec![s1, s2];
-        assert_eq!(masked_segment_count(&p), 1);
+        assert_eq!(masked_segment_count(&p, true), 1);
+        assert_eq!(masked_segment_count(&p, false), 0, "待确认段在仅已确认策略下不计入");
         p.targets[0].enabled = false;
-        assert_eq!(masked_segment_count(&p), 0);
+        assert_eq!(masked_segment_count(&p, true), 0);
+    }
+
+    #[test]
+    fn confirmed_only_policy_requires_confirmation() {
+        let mut pending = seg_with(vec![]);
+        pending.status = SegmentStatus::Pending;
+        assert!(should_mask(&pending, true));
+        assert!(!should_mask(&pending, false));
+
+        pending.status = SegmentStatus::Confirmed;
+        assert!(should_mask(&pending, false));
+
+        pending.status = SegmentStatus::Rejected;
+        assert!(!should_mask(&pending, true));
     }
 }

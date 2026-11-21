@@ -33,6 +33,8 @@ pub enum Event {
     ExportFinished,
     /// 取消后恢复为排队，保留检查点。
     Resume,
+    /// 失败后重新排队（清零尝试次数）。
+    Retry,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -95,6 +97,11 @@ impl Job {
             }
             (Exporting, ExportFinished) => Done,
             (Cancelled, Resume) => Queued,
+            (Failed, Retry) => {
+                self.attempts = 0;
+                self.last_error = None;
+                Queued
+            }
             (from, _) => {
                 return Err(QueueError::InvalidTransition { from, event: event.clone() });
             }
@@ -191,6 +198,18 @@ mod tests {
         j.apply(Event::Fail("again".into())).unwrap();
         assert_eq!(j.state, JobState::Failed);
         assert!(j.is_terminal());
+    }
+
+    #[test]
+    fn failed_job_can_be_retried_manually() {
+        let mut j = Job::new("a", 1);
+        j.apply(Event::Start).unwrap();
+        j.apply(Event::Fail("bad".into())).unwrap();
+        assert_eq!(j.state, JobState::Failed);
+        j.apply(Event::Retry).unwrap();
+        assert_eq!(j.state, JobState::Queued);
+        assert_eq!(j.attempts, 0);
+        assert!(j.last_error.is_none());
     }
 
     #[test]

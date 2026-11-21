@@ -3,7 +3,7 @@
 //! 每个操作都在副本上执行并通过校验后才提交，失败时项目保持原样。
 //! 对应 `first_design.md` 2.5（负样本反馈）与 1.5（复核工作台）。
 
-use vf_project::{Keyframe, Project, ProjectError, Segment, SegmentStatus, Source};
+use vf_project::{Keyframe, Project, ProjectError, Quad, Segment, SegmentStatus, Source, Target};
 
 /// 人工否决时，目标阈值每次上调的步长（ADR 未定，先取保守值）。
 pub const NEGATIVE_STEP: f64 = 0.01;
@@ -232,6 +232,57 @@ impl Editor {
             Ok(())
         })
     }
+
+    /// 新增目标。id 重复时校验失败，项目保持不变。
+    pub fn add_target(&mut self, target: Target) -> Result<(), EditError> {
+        self.apply(|p| {
+            p.targets.push(target);
+            Ok(())
+        })
+    }
+
+    /// 整体替换同 id 的目标（名称、样式、阈值、启用状态等一次提交）。
+    pub fn update_target(&mut self, target: Target) -> Result<(), EditError> {
+        self.apply(|p| {
+            let slot = p
+                .targets
+                .iter_mut()
+                .find(|t| t.id == target.id)
+                .ok_or_else(|| EditError::TargetNotFound(target.id.clone()))?;
+            *slot = target;
+            Ok(())
+        })
+    }
+
+    /// 在 `t` 处写入关键帧：已存在（±10ms）则更新，否则插入并保持时间有序。
+    /// 编辑后的段标记为人工来源、置信度 1.0。
+    pub fn set_keyframe(&mut self, segment_id: &str, t: f64, quad: Quad) -> Result<(), EditError> {
+        self.apply(|p| {
+            let s = Self::segment_mut(p, segment_id)?;
+            if let Some(k) = s.keyframes.iter_mut().find(|k| (k.t - t).abs() < 0.01) {
+                k.quad = quad;
+                k.conf = 1.0;
+            } else {
+                s.keyframes.push(Keyframe { t, quad, conf: 1.0 });
+                s.keyframes.sort_by(|a, b| a.t.total_cmp(&b.t));
+            }
+            s.source = Source::Manual;
+            Ok(())
+        })
+    }
+
+    /// 用一次扫描的结果替换某目标的全部自动段（人工段保留）。可撤销。
+    pub fn replace_auto_segments(&mut self, target_id: &str, segments: Vec<Segment>) -> Result<(), EditError> {
+        self.apply(|p| {
+            if p.target(target_id).is_none() {
+                return Err(EditError::TargetNotFound(target_id.to_string()));
+            }
+            p.segments
+                .retain(|s| !(s.target == target_id && s.source == Source::Auto));
+            p.segments.extend(segments);
+            Ok(())
+        })
+    }
 }
 
 #[cfg(test)]
@@ -255,6 +306,9 @@ mod tests {
             kind: TargetKind::Text,
             color: "#d1495b".into(),
             variants: vec![],
+            pattern: Some("机密".into()),
+            match_mode: vf_project::TextMatchMode::Contains,
+            fuzzy_edits: 1,
             engine: Engine::Ocr,
             mode: Mode::Standard,
             threshold: 0.6,
@@ -365,5 +419,77 @@ mod tests {
         assert_eq!(h.undo(4), Some(3));
         assert_eq!(h.undo(3), Some(2));
         assert_eq!(h.undo(2), None);
+    }
+
+    fn extra_target(id: &str) -> Target {
+        let mut t = base_project().targets[0].clone();
+        t.id = id.into();
+        t.name = id.into();
+        t
+    }
+
+    #[test]
+    fn add_and_update_target_are_undoable() {
+        let mut e = Editor::new(base_project());
+        e.add_target(extra_target("t2")).unwrap();
+        assert!(e.project().target("t2").is_some());
+
+        let mut t2 = e.project().target("t2").unwrap().clone();
+        t2.name = "新名字".into();
+        e.update_target(t2).unwrap();
+        assert_eq!(e.project().target("t2").unwrap().name, "新名字");
+
+        e.undo().unwrap();
+        assert_eq!(e.project().target("t2").unwrap().name, "t2");
+        e.undo().unwrap();
+        assert!(e.project().target("t2").is_none());
+    }
+
+    #[test]
+    fn duplicate_target_id_is_rejected() {
+        let mut e = Editor::new(base_project());
+        assert!(e.add_target(base_project().targets[0].clone()).is_err());
+        assert_eq!(e.project().targets.len(), 1);
+        assert!(!e.can_undo());
+    }
+
+    #[test]
+    fn set_keyframe_updates_or_inserts_in_time_order() {
+        let mut e = Editor::new(base_project());
+        let quad = [[1.0, 2.0], [3.0, 2.0], [3.0, 4.0], [1.0, 4.0]];
+        e.set_keyframe("s1", 15.0, quad).unwrap();
+        e.set_keyframe("s1", 12.0, quad).unwrap();
+        let s = e.project().segment("s1").unwrap();
+        assert_eq!(s.keyframes.len(), 3);
+        assert!((s.keyframes[1].t - 12.0).abs() < 1e-9);
+        assert_eq!(s.keyframes[1].quad, quad);
+        assert_eq!(s.source, Source::Manual);
+
+        // 同一时刻再写一次是更新而不是插入
+        let quad2 = [[5.0, 5.0]; 4];
+        e.set_keyframe("s1", 12.0, quad2).unwrap();
+        let s = e.project().segment("s1").unwrap();
+        assert_eq!(s.keyframes.len(), 3);
+        assert_eq!(s.keyframes[1].quad, quad2);
+    }
+
+    #[test]
+    fn replace_auto_segments_keeps_manual_and_is_undoable() {
+        let mut e = Editor::new(base_project());
+        e.add_manual_segment("m2", "t1", 30.0, 33.0, [[0.0; 2]; 4]).unwrap();
+
+        let mut seg = e.project().segment("s1").unwrap().clone();
+        seg.id = "auto-new".into();
+        seg.source = Source::Auto;
+        e.replace_auto_segments("t1", vec![seg]).unwrap();
+
+        let ids: Vec<&str> = e.project().segments.iter().map(|s| s.id.as_str()).collect();
+        assert!(ids.contains(&"auto-new"));
+        assert!(ids.contains(&"m2"));
+        assert!(!ids.contains(&"s1"), "旧的自动段应被替换");
+
+        e.undo().unwrap();
+        assert!(e.project().segment("s1").is_some());
+        assert!(e.project().segment("auto-new").is_none());
     }
 }

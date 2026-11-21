@@ -10,6 +10,7 @@ vf-project = { path = "../vf-project" }
 vf-fusion = { path = "../vf-fusion" }
 vf-cache = { path = "../vf-cache" }
 vf-image = { path = "../vf-image" }
+vf-media = { path = "../vf-media" }
 vf-vision = { path = "../vf-vision" }
 vf-text = { path = "../vf-text" }
 opencv = { version = "0.93", default-features = false, features = ["clang-runtime"] }
