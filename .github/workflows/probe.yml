@@ -20,8 +20,8 @@ jobs:
       VCPKGRS_TRIPLET: arm64-osx-static
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
-      OPENCV_VERSION: "4.14.0"
-      VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
+      OPENCV_VERSION: "4.10.0"
+      VCPKG_COMMIT: 9b75e789ece3f942159b8500584e35aafe3979ff
     steps:
       - uses: actions/checkout@v4
 
@@ -86,6 +86,7 @@ jobs:
         working-directory: app
         run: |
           code=0
+          rm -rf src-tauri/target/*/build/opencv-* src-tauri/target/*/build/vf-image-* src-tauri/target/*/build/vf-render-*
           npm run tauri build -- --bundles dmg > ../build.txt 2>&1 || code=$?
           tail -60 ../build.txt
           grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
@@ -124,8 +125,8 @@ jobs:
       VCPKGRS_TRIPLET: x64-linux-static
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
-      OPENCV_VERSION: "4.14.0"
-      VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
+      OPENCV_VERSION: "4.10.0"
+      VCPKG_COMMIT: 9b75e789ece3f942159b8500584e35aafe3979ff
     steps:
       - uses: actions/checkout@v4
 
@@ -201,6 +202,7 @@ jobs:
         working-directory: app
         run: |
           code=0
+          rm -rf src-tauri/target/*/build/opencv-* src-tauri/target/*/build/vf-image-* src-tauri/target/*/build/vf-render-*
           npm run tauri build -- --bundles deb,appimage > ../build.txt 2>&1 || code=$?
           tail -60 ../build.txt
           grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
@@ -242,8 +244,8 @@ jobs:
       VCPKGRS_TRIPLET: x64-windows-static-md
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: dynamic
-      OPENCV_VERSION: "4.14.0"
-      VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
+      OPENCV_VERSION: "4.10.0"
+      VCPKG_COMMIT: 9b75e789ece3f942159b8500584e35aafe3979ff
     steps:
       - uses: actions/checkout@v4
 
@@ -285,6 +287,14 @@ jobs:
               git -C "$VCPKG_ROOT" fetch -q --depth 1 origin "$VCPKG_COMMIT"
               git -C "$VCPKG_ROOT" checkout -q FETCH_HEAD
               if [ "$RUNNER_OS" = "Windows" ]; then
+                # msys2-runtime-3.5.4-2 已被所有正牌镜像清除：URL 换到保留
+                # 历史版本的 NJU 镜像，条目改用仍存在的 3.5.7-4 并同步 SHA512。
+                f="$VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake"
+                curl -sfL --retry 3 -o "$RUNNER_TEMP/msysrt.pkg.tar.zst"                   "https://mirror.nju.edu.cn/msys2/msys/x86_64/msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst"
+                newsha=$(sha512sum "$RUNNER_TEMP/msysrt.pkg.tar.zst" | cut -d' ' -f1)
+                sed -i                   -e 's|https://mirror.msys2.org/msys/|https://mirror.nju.edu.cn/msys2/msys/|g'                   -e 's|https://mirror.msys2.org/mingw/|https://mirror.nju.edu.cn/msys2/mingw/|g'                   -e 's|msys2-runtime-3.5.4-2-x86_64.pkg.tar.zst|msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst|g'                   -e "s|070aeb43385beb0e3f8d5fb28909469765116c222d53c2614f5f080be879eef0b78258334b35e8cda7625d8704efc89133f8b8fa78f309c5d680ae270efdaba8|$newsha|"                   "$f"
+              fi
+              if [ "$RUNNER_OS" = "Windows" ]; then
                 cmd //c "$(cygpath -w "$VCPKG_ROOT\\bootstrap-vcpkg.bat") -disableMetrics"
               else
                 bash "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
@@ -315,6 +325,7 @@ jobs:
         working-directory: app
         run: |
           code=0
+          rm -rf src-tauri/target/*/build/opencv-* src-tauri/target/*/build/vf-image-* src-tauri/target/*/build/vf-render-*
           npm run tauri build -- --bundles nsis > ../build.txt 2>&1 || code=$?
           tail -60 ../build.txt
           grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
