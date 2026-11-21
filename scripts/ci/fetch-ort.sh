@@ -37,7 +37,8 @@ for c in python3 python; do
   fi
 done
 [ -n "$py" ] || { echo "找不到可用的 Python 解释器" >&2; exit 1; }
-"$py" - "$tmp/ort.nupkg" "$rid" "$dest" <<'PY'
+# PYTHONUTF8=1：Windows runner 上重定向的 stdout 是 cp1252，中文输出会直接崩。
+PYTHONUTF8=1 "$py" - "$tmp/ort.nupkg" "$rid" "$dest" <<'PY'
 import os
 import shutil
 import sys
