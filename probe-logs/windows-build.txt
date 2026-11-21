@@ -1,0 +1,783 @@
+########## vcpkg.txt ##########
+njurt newsha=b9b9075d4efe76ef74bd9a0cf733c20a8cc3210da89ac3bee005e40e96725d73582d955dd6a2db3ddef79192bb1619c2c505bf11836f226a01350de5be71f05c
+Downloading https://github.com/microsoft/vcpkg-tool/releases/download/2025-03-22/vcpkg.exe -> D:\a\VeilFrame\VeilFrame\vcpkg\vcpkg.exe... done.
+Validating signature... done.
+
+vcpkg package management program version 2025-03-22-d4dd14112c2026ee57e59f966ecfa3b9137bd143
+
+See LICENSE.txt for license information.
+Computing installation plan...
+The following packages will be built and installed:
+  * abseil:x64-windows@20250127.0
+  * abseil:x64-windows-static-md@20250127.0
+  * flatbuffers:x64-windows@25.2.10
+  * flatbuffers:x64-windows-static-md@25.2.10
+  * libjpeg-turbo:x64-windows-static-md@3.1.0#1
+  * liblzma:x64-windows-static-md@5.8.0
+  * libpng:x64-windows-static-md@1.6.46
+  * libwebp[core,libwebpmux,nearlossless,simd,unicode]:x64-windows-static-md@1.5.0
+    opencv4[calib3d,core,directml,dnn,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:x64-windows-static-md@4.10.0#6
+  * protobuf:x64-windows@5.29.3
+  * protobuf:x64-windows-static-md@5.29.3
+  * quirc:x64-windows-static-md@1.2
+  * tiff[core,jpeg,lzma,zip]:x64-windows-static-md@4.7.0
+  * utf8-range:x64-windows@5.29.3
+  * utf8-range:x64-windows-static-md@5.29.3
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+  * vcpkg-get-python-packages:x64-windows@2024-09-29
+  * zlib:x64-windows-static-md@1.3.1
+Additional packages (*) will be modified to complete this operation.
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static-md...
+Compiler found: C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/cl.exe
+Restored 0 package(s) from D:/a/VeilFrame/VeilFrame/vcpkg-cache in 310 us. Use --debug to see more details.
+Installing 1/19 vcpkg-cmake:x64-windows@2024-04-23...
+Building vcpkg-cmake:x64-windows@2024-04-23...
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_configure.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_build.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_install.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg-port-config.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/copyright
+-- Performing post-build validation
+Starting submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake:x64-windows: 41.3 ms
+vcpkg-cmake:x64-windows package ABI: 9442d3a539118d1597e7601aa52e13a04a29726a21a9b20334da11ce9527d990
+Installing 2/19 vcpkg-cmake-config:x64-windows@2024-05-23...
+Building vcpkg-cmake-config:x64-windows@2024-05-23...
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg_cmake_config_fixup.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg-port-config.cmake
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/copyright
+-- Skipping post-build validation due to VCPKG_POLICY_EMPTY_PACKAGE
+Starting submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake-config:x64-windows: 43.9 ms
+vcpkg-cmake-config:x64-windows package ABI: 23ca8a20052b2f5b0d35165bafed0fd6a0b93aa52a1aa18525bd0d0721bc720d
+Installing 3/19 abseil:x64-windows@20250127.0...
+Building abseil:x64-windows@20250127.0...
+Downloading https://github.com/abseil/abseil-cpp/archive/20250127.0.tar.gz -> abseil-abseil-cpp-20250127.0.tar.gz
+Successfully downloaded abseil-abseil-cpp-20250127.0.tar.gz
+-- Extracting source D:/a/VeilFrame/VeilFrame/vcpkg/downloads/abseil-abseil-cpp-20250127.0.tar.gz
+-- Using source at D:/a/VeilFrame/VeilFrame/vcpkg/buildtrees/abseil/src/20250127.0-6d78de3c24.clean
+-- Found external ninja('1.13.2').
+-- Configuring x64-windows-dbg
+-- Configuring x64-windows-rel
+-- Building x64-windows-dbg
+-- Building x64-windows-rel
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/abseil_dll.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_absl_check.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_absl_log.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_absl_vlog_is_on.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_algorithm.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_algorithm_container.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_any.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_any_invocable.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_atomic_hook.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_bad_any_cast.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_bad_any_cast_impl.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_bad_optional_access.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_bad_variant_access.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_base.pc
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_base_internal.pc
+########## vcpkg.txt (tail) ##########
+-- Extracting source D:/a/VeilFrame/VeilFrame/vcpkg/downloads/libtiff-libtiff-v4.7.0.tar.gz
+-- Applying patch FindCMath.patch
+-- Applying patch prefer-config.diff
+-- Using source at D:/a/VeilFrame/VeilFrame/vcpkg/buildtrees/tiff/src/v4.7.0-05e0c9997b.clean
+-- Found external ninja('1.13.2').
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/tiff_x64-windows-static-md/lib/pkgconfig/libtiff-4.pc
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst, trying https://mirror.nju.edu.cn/msys2/msys/x86_64/msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/VeilFrame/VeilFrame/vcpkg/downloads/tools/msys2/885e6d1ffed7c29e
+-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/tiff_x64-windows-static-md/debug/lib/pkgconfig/libtiff-4.pc
+-- Installing: D:/a/VeilFrame/VeilFrame/vcpkg/packages/tiff_x64-windows-static-md/share/tiff/copyright
+-- Performing post-build validation
+Starting submission of tiff[core,jpeg,lzma,zip]:x64-windows-static-md@4.7.0 to 1 binary cache(s) in the background
+Elapsed time to handle tiff:x64-windows-static-md: 31 s
+tiff:x64-windows-static-md package ABI: 9cb8c61284db7d417f476091569422042edba69aa9853a5b2dda71523faefc9b
+Installing 18/19 vcpkg-get-python-packages:x64-windows@2024-09-29...
+Building vcpkg-get-python-packages:x64-windows@2024-09-29...
+-- Skipping post-build validation due to VCPKG_POLICY_EMPTY_PACKAGE
+Starting submission of vcpkg-get-python-packages:x64-windows@2024-09-29 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-get-python-packages:x64-windows: 59.8 ms
+vcpkg-get-python-packages:x64-windows package ABI: d20486c8ee8546911448ba1f3d3db055f7a15d88ec81731cb978abf7869ed8d1
+Installing 19/19 opencv4[calib3d,core,directml,dnn,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:x64-windows-static-md@4.10.0#6...
+Building opencv4[calib3d,core,directml,dnn,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:x64-windows-static-md@4.10.0#6...
+Downloading https://github.com/opencv/opencv/commit/96d6395a6dccb9554bc2f83105f87ebd071d37fa.patch -> 96d6395a6dccb9554bc2f83105f87ebd071d37fa.patch
+Successfully downloaded 96d6395a6dccb9554bc2f83105f87ebd071d37fa.patch
+Downloading https://github.com/opencv/opencv_contrib/commit/b236c71c2f8d983403c35a0cea8bec0432a4b0fe.patch -> b236c71c2f8d983403c35a0cea8bec0432a4b0fe.patch
+Successfully downloaded b236c71c2f8d983403c35a0cea8bec0432a4b0fe.patch
+Downloading https://github.com/opencv/opencv/archive/4.10.0.tar.gz -> opencv-opencv-4.10.0.tar.gz
+Successfully downloaded opencv-opencv-4.10.0.tar.gz
+-- Extracting source D:/a/VeilFrame/VeilFrame/vcpkg/downloads/opencv-opencv-4.10.0.tar.gz
+-- Applying patch 0001-disable-downloading.patch
+-- Applying patch 0002-install-options.patch
+-- Applying patch 0003-force-package-requirements.patch
+-- Applying patch 0004-fix-eigen.patch
+-- Applying patch 0005-fix-policy-CMP0057.patch
+-- Applying patch 0006-fix-uwp.patch
+-- Applying patch 0008-devendor-quirc.patch
+-- Applying patch 0009-fix-protobuf.patch
+-- Applying patch 0010-fix-uwp-tiff-imgcodecs.patch
+-- Applying patch 0011-remove-python2.patch
+-- Applying patch 0012-fix-zlib.patch
+-- Applying patch 0014-fix-cmake-in-list.patch
+-- Applying patch 0015-fix-freetype.patch
+-- Applying patch 0017-fix-flatbuffers.patch
+-- Applying patch 0019-opencl-kernel.patch
+-- Applying patch 0020-miss-openexr.patch
+-- Applying patch D:/a/VeilFrame/VeilFrame/vcpkg/downloads/96d6395a6dccb9554bc2f83105f87ebd071d37fa.patch
+-- Using source at D:/a/VeilFrame/VeilFrame/vcpkg/buildtrees/opencv4/src/4.10.0-f7d96793eb.clean
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.3.0-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst, trying https://mirror.nju.edu.cn/msys2/msys/x86_64/msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/VeilFrame/VeilFrame/vcpkg/downloads/tools/msys2/885e6d1ffed7c29e
+Downloading https://github.com/tiny-dnn/tiny-dnn/archive/v1.0.0a3.tar.gz -> opencv-cache/tiny_dnn/adb1c512e09ca2c7a6faef36f9c53e59-v1.0.0a3.tar.gz
+Successfully downloaded opencv-cache/tiny_dnn/adb1c512e09ca2c7a6faef36f9c53e59-v1.0.0a3.tar.gz
+-- Found external ninja('1.13.2').
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Performing post-build validation
+Starting submission of opencv4[calib3d,core,directml,dnn,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:x64-windows-static-md@4.10.0#6 to 1 binary cache(s) in the background
+Elapsed time to handle opencv4:x64-windows-static-md: 11 min
+opencv4:x64-windows-static-md package ABI: acdb8a1fa5d6faeb3124021830ca9a1f0f7b893b45f6408b11e9f6fa8ff9ae92
+Total install time: 37 min
+opencv4 is compatible with built-in CMake variables. In case of multiple OpenCV version installed, set OpenCV_ROOT *before* the find_package call:
+
+    set(OpenCV_ROOT "${VCPKG_INSTALLED_DIR}/x64-windows-static-md/share/opencv4")
+    find_package(OpenCV REQUIRED)
+
+Completed submission of protobuf:x64-windows-static-md@5.29.3 to 1 binary cache(s) in 1.2 min
+Completed submission of quirc:x64-windows-static-md@1.2 to 1 binary cache(s) in 137 ms
+Completed submission of tiff[core,jpeg,lzma,zip]:x64-windows-static-md@4.7.0 to 1 binary cache(s) in 1.2 s
+Completed submission of vcpkg-get-python-packages:x64-windows@2024-09-29 to 1 binary cache(s) in 114 ms
+Waiting for 1 remaining binary cache submissions...
+Completed submission of opencv4[calib3d,core,directml,dnn,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:x64-windows-static-md@4.10.0#6 to 1 binary cache(s) in 52 s (1/1)
+########## vcpkg.txt (errors) ##########
+243:-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/lib/pkgconfig/absl_strerror.pc
+441:-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows/debug/lib/pkgconfig/absl_strerror.pc
+651:-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows-static-md/lib/pkgconfig/absl_strerror.pc
+848:-- Fixing pkgconfig file: D:/a/VeilFrame/VeilFrame/vcpkg/packages/abseil_x64-windows-static-md/debug/lib/pkgconfig/absl_strerror.pc
+########## npm.txt ##########
+
+added 103 packages, and audited 104 packages in 7s
+
+18 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (3 moderate, 1 high, 2 critical)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+########## npm.txt (errors) ##########
+########## build.txt ##########
+
+> veilframe-ui@0.1.0 tauri
+> tauri build --bundles nsis
+
+        Info Looking up installed tauri packages to check mismatched versions...
+        Warn The bundle identifier "com.veilframe.app" set in `"tauri.conf.json" identifier` ends with `.app`. This is not recommended because it conflicts with the application bundle extension on macOS.
+     Running beforeBuildCommand `npm run build`
+
+> veilframe-ui@0.1.0 build
+> tsc --noEmit && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 47 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                  [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[35massets/index-JR7SSO85.css   [39m[1m[2m  9.83 kB[22m[1m[22m[2m │ gzip:  2.79 kB[22m
+[2mdist/[22m[36massets/dist-js-BXWZoPZE.js  [39m[1m[2m  0.29 kB[22m[1m[22m[2m │ gzip:  0.18 kB[22m
+[2mdist/[22m[36massets/index-DrurB348.js    [39m[1m[2m186.16 kB[22m[1m[22m[2m │ gzip: 62.07 kB[22m
+[32m✓ built in 1.12s[39m
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m adler2 v2.0.1
+[1m[92m  Downloaded[0m json-patch v4.2.0
+[1m[92m  Downloaded[0m option-ext v0.2.0
+[1m[92m  Downloaded[0m jiff-tzdb-platform v0.1.3
+[1m[92m  Downloaded[0m jiff-tzdb-platform v1.0.0
+[1m[92m  Downloaded[0m new_debug_unreachable v1.0.6
+[1m[92m  Downloaded[0m num-conv v0.2.2
+[1m[92m  Downloaded[0m rustc-hash v2.1.3
+[1m[92m  Downloaded[0m serialize-to-javascript-impl v0.1.2
+[1m[92m  Downloaded[0m precomputed-hash v0.1.1
+[1m[92m  Downloaded[0m scopeguard v1.2.0
+[1m[92m  Downloaded[0m string_cache_codegen v0.6.1
+[1m[92m  Downloaded[0m powerfmt v0.2.1
+[1m[92m  Downloaded[0m siphasher v1.0.4
+[1m[92m  Downloaded[0m form_urlencoded v1.2.3
+[1m[92m  Downloaded[0m potential_utf v0.1.6
+[1m[92m  Downloaded[0m ref-cast-impl v1.0.27
+[1m[92m  Downloaded[0m static_vcruntime v3.0.0
+[1m[92m  Downloaded[0m jobserver v0.1.35
+[1m[92m  Downloaded[0m libloading v0.9.1
+[1m[92m  Downloaded[0m phf_shared v0.13.1
+[1m[92m  Downloaded[0m percent-encoding v2.3.2
+[1m[92m  Downloaded[0m rustc_version v0.4.1
+[1m[92m  Downloaded[0m serde_repr v0.1.21
+[1m[92m  Downloaded[0m phf_codegen v0.13.1
+[1m[92m  Downloaded[0m rawpointer v0.2.1
+[1m[92m  Downloaded[0m strsim v0.11.1
+[1m[92m  Downloaded[0m serialize-to-javascript v0.1.2
+[1m[92m  Downloaded[0m stable_deref_trait v1.2.1
+[1m[92m  Downloaded[0m phf_generator v0.13.1
+[1m[92m  Downloaded[0m ref-cast v1.0.27
+[1m[92m  Downloaded[0m same-file v1.0.6
+[1m[92m  Downloaded[0m libloading v0.8.9
+[1m[92m  Downloaded[0m lock_api v0.4.14
+[1m[92m  Downloaded[0m mime v0.3.18
+[1m[92m  Downloaded[0m num-integer v0.1.47
+[1m[92m  Downloaded[0m phf_macros v0.13.1
+[1m[92m  Downloaded[0m schemars_derive v0.8.22
+[1m[92m  Downloaded[0m serde-untagged v0.1.9
+[1m[92m  Downloaded[0m servo_arc v0.4.3
+[1m[92m  Downloaded[0m simd-adler32 v0.3.10
+[1m[92m  Downloaded[0m markup5ever v0.39.0
+[1m[92m  Downloaded[0m num-complex v0.4.6
+[1m[92m  Downloaded[0m pin-project-lite v0.2.18
+[1m[92m  Downloaded[0m pkg-config v0.3.34
+[1m[92m  Downloaded[0m quote v1.0.47
+[1m[92m  Downloaded[0m serde_spanned v1.1.3
+[1m[92m  Downloaded[0m sha2 v0.11.1
+[1m[92m  Downloaded[0m jiff-tzdb v0.1.10
+[1m[92m  Downloaded[0m litemap v0.8.3
+[1m[92m  Downloaded[0m log v0.4.35
+[1m[92m  Downloaded[0m once_cell v1.21.4
+[1m[92m  Downloaded[0m parking_lot v0.12.5
+[1m[92m  Downloaded[0m parking_lot_core v0.9.12
+[1m[92m  Downloaded[0m phf v0.13.1
+[1m[92m  Downloaded[0m raw-window-handle v0.6.2
+[1m[92m  Downloaded[0m rfd v0.17.2
+[1m[92m  Downloaded[0m semver v1.0.28
+[1m[92m  Downloaded[0m serde_derive_internals v0.29.1
+[1m[92m  Downloaded[0m serde_with_macros v3.25.0
+[1m[92m  Downloaded[0m shlex v2.0.1
+[1m[92m  Downloaded[0m smallvec v1.16.6
+[1m[92m  Downloaded[0m string_cache v0.9.0
+[1m[92m  Downloaded[0m utf_types v1.0.0
+[1m[92m  Downloaded[0m webview2-com-macros v0.8.1
+[1m[92m  Downloaded[0m windows-link v0.2.1
+[1m[92m  Downloaded[0m windows-numerics v0.3.1
+[1m[92m  Downloaded[0m windows-result v0.4.1
+[1m[92m  Downloaded[0m zerofrom-derive v0.1.8
+[1m[92m  Downloaded[0m clang-sys v1.9.1
+[1m[92m  Downloaded[0m jiff-tzdb v1.0.0
+[1m[92m  Downloaded[0m jsonptr v0.7.1
+[1m[92m  Downloaded[0m matrixmultiply v0.3.11
+[1m[92m  Downloaded[0m miniz_oxide v0.8.9
+[1m[92m  Downloaded[0m miniz_oxide v0.9.1
+[1m[92m  Downloaded[0m num-traits v0.2.19
+[1m[92m  Downloaded[0m ort-sys v2.0.0-rc.15
+[1m[92m  Downloaded[0m plist v1.10.4
+[1m[92m  Downloaded[0m proc-macro2 v1.0.107
+[1m[92m  Downloaded[0m schemars v0.8.22
+[1m[92m  Downloaded[0m serde_core v1.0.229
+[1m[92m  Downloaded[0m serde_derive v1.0.229
+[1m[92m  Downloaded[0m socket2 v0.6.5
+[1m[92m  Downloaded[0m bit-set v0.8.0
+[1m[92m  Downloaded[0m cfb v0.14.0
+[1m[92m  Downloaded[0m keyboard-types v0.8.3
+[1m[92m  Downloaded[0m schemars v0.9.0
+[1m[92m  Downloaded[0m schemars v1.2.3
+[1m[92m  Downloaded[0m selectors v0.38.0
+[1m[92m  Downloaded[0m serde v1.0.229
+[1m[92m  Downloaded[0m softbuffer v0.4.8
+[1m[92m  Downloaded[0m web_atoms v0.2.6
+[1m[92m  Downloaded[0m webview2-com v0.39.1
+[1m[92m  Downloaded[0m zerotrie v0.2.5
+[1m[92m  Downloaded[0m autocfg v1.5.1
+[1m[92m  Downloaded[0m camino v1.2.6
+[1m[92m  Downloaded[0m cargo-platform v0.1.9
+[1m[92m  Downloaded[0m cpufeatures v0.3.1
+[1m[92m  Downloaded[0m crc32fast v1.5.5
+[1m[92m  Downloaded[0m crossbeam-utils v0.8.23
+[1m[92m  Downloaded[0m jiff-core v0.1.8
+[1m[92m  Downloaded[0m jiff-core v1.0.1
+[1m[92m  Downloaded[0m memchr v2.8.3
+[1m[92m  Downloaded[0m mio v1.2.5
+[1m[92m  Downloaded[0m muda v0.20.0
+[1m[92m  Downloaded[0m opencv-binding-generator v0.108.0
+[1m[92m  Downloaded[0m png v0.18.1
+[1m[92m  Downloaded[0m regex v1.13.2
+[1m[92m  Downloaded[0m rusqlite v0.32.1
+[1m[92m  Downloaded[0m serde_json v1.0.154
+[1m[92m  Downloaded[0m unicode-segmentation v1.13.3
+[1m[92m  Downloaded[0m uuid v1.29.3
+[1m[92m  Downloaded[0m walkdir v2.5.0
+[1m[92m  Downloaded[0m windows-core v0.62.2
+[1m[92m  Downloaded[0m windows-future v0.3.2
+[1m[92m  Downloaded[0m windows-implement v0.60.2
+[1m[92m  Downloaded[0m winreg v0.56.0
+[1m[92m  Downloaded[0m winsplit v0.1.0
+[1m[92m  Downloaded[0m base64 v0.23.1
+[1m[92m  Downloaded[0m const-oid v0.10.3
+[1m[92m  Downloaded[0m ndarray v0.17.2
+[1m[92m  Downloaded[0m ort v2.0.0-rc.15
+[1m[92m  Downloaded[0m quick-xml v0.42.0
+[1m[92m  Downloaded[0m serde_with v3.25.0
+[1m[92m  Downloaded[0m url v2.5.9
+[1m[92m  Downloaded[0m urlpattern v0.6.0
+[1m[92m  Downloaded[0m zerovec-derive v0.11.7
+[1m[92m  Downloaded[0m alloc-stdlib v0.3.0
+[1m[92m  Downloaded[0m anyhow v1.0.104
+[1m[92m  Downloaded[0m regex-syntax v0.8.12
+[1m[92m  Downloaded[0m bs58 v0.5.1
+[1m[92m  Downloaded[0m cfg-if v1.0.5
+[1m[92m  Downloaded[0m equivalent v1.0.3
+[1m[92m  Downloaded[0m byteorder v1.5.0
+[1m[92m  Downloaded[0m cargo_metadata v0.19.2
+[1m[92m  Downloaded[0m cargo_toml v1.0.1
+[1m[92m  Downloaded[0m block-buffer v0.12.1
+[1m[92m  Downloaded[0m arrayvec v0.7.8
+[1m[92m  Downloaded[0m bit-vec v0.8.0
+[1m[92m  Downloaded[0m ahash v0.8.12
+[1m[92m  Downloaded[0m bitflags v2.13.2
+[1m[92m  Downloaded[0m regex-automata v0.4.19
+[1m[92m  Downloaded[0m utf8_iter v1.1.0
+[1m[92m  Downloaded[0m bytes v1.12.2
+[1m[92m  Downloaded[0m cc v1.11.3
+[1m[92m  Downloaded[0m aho-corasick v1.1.5
+[1m[92m  Downloaded[0m blake3 v1.8.7
+[1m[92m  Downloaded[0m libc v0.2.191
+[1m[92m  Downloaded[0m brotli-decompressor v6.3.2
+[1m[92m  Downloaded[0m vswhom-sys v0.1.3
+[1m[92m  Downloaded[0m zerofrom v0.1.8
+[1m[92m  Downloaded[0m cssparser-macros v0.7.1
+[1m[92m  Downloaded[0m darling_macro v0.24.1
+[1m[92m  Downloaded[0m version_check v0.9.5
+[1m[92m  Downloaded[0m winapi-util v0.1.11
+[1m[92m  Downloaded[0m windows-strings v0.5.1
+[1m[92m  Downloaded[0m windows-threading v0.2.1
+[1m[92m  Downloaded[0m writeable v0.6.4
+[1m[92m  Downloaded[0m yoke-derive v0.8.4
+[1m[92m  Downloaded[0m windows-interface v0.59.3
+[1m[92m  Downloaded[0m brotli v9.1.3
+[1m[92m  Downloaded[0m vswhom v0.1.0
+[1m[92m  Downloaded[0m windows-version v0.1.7
+[1m[92m  Downloaded[0m constant_time_eq v0.4.2
+[1m[92m  Downloaded[0m crypto-common v0.2.2
+[1m[92m  Downloaded[0m fallible-streaming-iterator v0.1.9
+[1m[92m  Downloaded[0m ident_case v1.0.1
+[1m[92m  Downloaded[0m idna_adapter v1.2.2
+[1m[92m  Downloaded[0m web-time v1.1.0
+[1m[92m  Downloaded[0m windows-collections v0.3.2
+[1m[92m  Downloaded[0m zmij v1.0.23
+[1m[92m  Downloaded[0m yoke v0.8.4
+[1m[92m  Downloaded[0m cookie v0.18.2
+[1m[92m  Downloaded[0m dunce v1.0.5
+[1m[92m  Downloaded[0m zerovec v0.11.9
+[1m[92m  Downloaded[0m vcpkg v0.2.15
+[1m[92m  Downloaded[0m winnow v1.0.5
+[1m[92m  Downloaded[0m clang v2.1.0
+[1m[92m  Downloaded[0m wry v0.57.3
+[1m[92m  Downloaded[0m zlib-rs v0.6.8
+[1m[92m  Downloaded[0m chrono v0.4.45
+[1m[92m  Downloaded[0m zerocopy v0.8.63
+[1m[92m  Downloaded[0m opencv v0.102.0
+[1m[92m  Downloaded[0m time-core v0.1.9
+[1m[92m  Downloaded[0m dirs v7.0.0
+[1m[92m  Downloaded[0m dpi v0.1.2
+[1m[92m  Downloaded[0m heck v0.5.0
+[1m[92m  Downloaded[0m dyn-clone v1.0.20
+[1m[92m  Downloaded[0m window-vibrancy v0.8.1
+[1m[92m  Downloaded[0m http-range v0.1.6
+[1m[92m  Downloaded[0m dirs-sys v0.5.0
+[1m[92m  Downloaded[0m dtoa-short v0.3.5
+[1m[92m  Downloaded[0m alloc-no-stdlib v3.0.0
+[1m[92m  Downloaded[0m hex v0.4.3
+[1m[92m  Downloaded[0m fnv v1.0.7
+[1m[92m  Downloaded[0m fdeflate v0.3.7
+[1m[92m  Downloaded[0m displaydoc v0.2.7
+[1m[92m  Downloaded[0m fallible-iterator v0.3.0
+[1m[92m  Downloaded[0m time-macros v0.2.32
+[1m[92m  Downloaded[0m itoa v1.0.19
+[1m[92m  Downloaded[0m fastrand v2.5.0
+[1m[92m  Downloaded[0m tauri-winres v0.3.7
+[1m[92m  Downloaded[0m thiserror-impl v2.0.21
+[1m[92m  Downloaded[0m tinystr v0.8.5
+[1m[92m  Downloaded[0m dtoa v1.0.11
+[1m[92m  Downloaded[0m infer v0.22.0
+[1m[92m  Downloaded[0m find-msvc-tools v0.1.15
+[1m[92m  Downloaded[0m windows-sys v0.61.2
+[1m[92m  Downloaded[0m glob v0.3.4
+[1m[92m  Downloaded[0m synstructure v0.14.0
+[1m[92m  Downloaded[0m thiserror v2.0.21
+[1m[92m  Downloaded[0m toml_datetime v1.1.3+spec-1.1.0
+[1m[92m  Downloaded[0m typeid v1.0.3
+[1m[92m  Downloaded[0m foldhash v0.2.0
+[1m[92m  Downloaded[0m tauri-plugin v2.7.4
+[1m[92m  Downloaded[0m deranged v0.5.9
+[1m[92m  Downloaded[0m erased-serde v0.4.11
+[1m[92m  Downloaded[0m digest v0.11.3
+[1m[92m  Downloaded[0m embed-resource v3.0.12
+[1m[92m  Downloaded[0m tauri-build v2.7.6
+[1m[92m  Downloaded[0m tauri-codegen v2.7.6
+[1m[92m  Downloaded[0m tauri-macros v2.7.6
+[1m[92m  Downloaded[0m toml_parser v1.1.5+spec-1.1.0
+[1m[92m  Downloaded[0m hybrid-array v0.4.15
+[1m[92m  Downloaded[0m tendril v0.5.1
+[1m[92m  Downloaded[0m hashlink v0.9.1
+[1m[92m  Downloaded[0m indexmap v1.9.3
+[1m[92m  Downloaded[0m toml v1.2.1+spec-1.1.0
+[1m[92m  Downloaded[0m unicode-ident v1.0.27
+[1m[92m  Downloaded[0m cssparser v0.37.0
+[1m[92m  Downloaded[0m ctor v1.0.14
+[1m[92m  Downloaded[0m getrandom v0.3.4
+[1m[92m  Downloaded[0m tauri-runtime v2.12.4
+[1m[92m  Downloaded[0m toml_writer v1.2.0+spec-1.1.0
+[1m[92m  Downloaded[0m tracing-core v0.1.36
+[1m[92m  Downloaded[0m tinyvec v1.13.3
+[1m[92m  Downloaded[0m icu_provider v2.4.0
+[1m[92m  Downloaded[0m darling v0.24.1
+[1m[92m  Downloaded[0m icu_locale_core v2.4.0
+[1m[92m  Downloaded[0m libsqlite3-sys v0.30.1
+[1m[92m  Downloaded[0m getrandom v0.4.3
+[1m[92m  Downloaded[0m ico v0.6.0
+[1m[92m  Downloaded[0m tauri-plugin-dialog v2.8.4
+[1m[92m  Downloaded[0m tauri-runtime-wry v2.12.5
+[1m[92m  Downloaded[0m derive_more v2.1.1
+[1m[92m  Downloaded[0m icu_normalizer_data v2.4.0
+[1m[92m  Downloaded[0m crossbeam-channel v0.5.17
+[1m[92m  Downloaded[0m darling_core v0.24.1
+[1m[92m  Downloaded[0m flate2 v1.1.11
+[1m[92m  Downloaded[0m html5ever v0.39.0
+[1m[92m  Downloaded[0m tauri-plugin-fs v2.7.1
+[1m[92m  Downloaded[0m tray-icon v0.25.1
+[1m[92m  Downloaded[0m derive_more-impl v2.1.1
+[1m[92m  Downloaded[0m http v1.5.0
+[1m[92m  Downloaded[0m typenum v1.20.1
+[1m[92m  Downloaded[0m hashbrown v0.12.3
+[1m[92m  Downloaded[0m icu_collections v2.4.0
+[1m[92m  Downloaded[0m dom_query v0.28.0
+[1m[92m  Downloaded[0m indexmap v2.14.2
+[1m[92m  Downloaded[0m icu_properties v2.4.0
+[1m[92m  Downloaded[0m idna v1.1.0
+[1m[92m  Downloaded[0m tauri-utils v2.10.4
+[1m[92m  Downloaded[0m hashbrown v0.14.5
+[1m[92m  Downloaded[0m hashbrown v0.17.1
+[1m[92m  Downloaded[0m icu_properties_data v2.4.0
+[1m[92m  Downloaded[0m time v0.3.55
+[1m[92m  Downloaded[0m syn v2.0.119
+[1m[92m  Downloaded[0m tao v0.37.3
+[1m[92m  Downloaded[0m syn v3.0.10
+[1m[92m  Downloaded[0m tauri v2.12.7
+[1m[92m  Downloaded[0m webview2-com-sys v0.39.1
+[1m[92m  Downloaded[0m tracing v0.1.44
+[1m[92m  Downloaded[0m icu_normalizer v2.4.0
+[1m[92m  Downloaded[0m jiff v0.2.46
+[1m[92m  Downloaded[0m jiff v1.0.1
+[1m[92m  Downloaded[0m tokio v1.54.1
+[1m[92m  Downloaded[0m windows v0.62.2
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m unicode-ident v1.0.27
+[1m[92m   Compiling[0m cfg-if v1.0.5
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m windows-link v0.2.1
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m siphasher v1.0.4
+[1m[92m   Compiling[0m syn v3.0.10
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m phf_shared v0.13.1
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m icu_normalizer_data v2.4.0
+[1m[92m   Compiling[0m icu_properties_data v2.4.0
+[1m[92m   Compiling[0m phf_generator v0.13.1
+[1m[92m   Compiling[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[92m   Compiling[0m smallvec v1.16.6
+[1m[92m   Compiling[0m glob v0.3.4
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m regex-syntax v0.8.12
+[1m[92m   Compiling[0m synstructure v0.14.0
+[1m[92m   Compiling[0m regex-automata v0.4.19
+[1m[92m   Compiling[0m jobserver v0.1.35
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m zerofrom-derive v0.1.8
+[1m[92m   Compiling[0m yoke-derive v0.8.4
+[1m[92m   Compiling[0m zerovec-derive v0.11.7
+[1m[92m   Compiling[0m thiserror-impl v2.0.21
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m zerofrom v0.1.8
+[1m[92m   Compiling[0m yoke v0.8.4
+[1m[92m   Compiling[0m find-msvc-tools v0.1.15
+[1m[92m   Compiling[0m libc v0.2.191
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m cc v1.11.3
+[1m[92m   Compiling[0m zerovec v0.11.9
+[1m[92m   Compiling[0m regex v1.13.2
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[92m   Compiling[0m phf_macros v0.13.1
+[1m[92m   Compiling[0m typeid v1.0.3
+[1m[92m   Compiling[0m time-core v0.1.9
+[1m[92m   Compiling[0m num-conv v0.2.2
+[1m[92m   Compiling[0m tinystr v0.8.5
+[1m[92m   Compiling[0m phf_codegen v0.13.1
+[1m[92m   Compiling[0m utf_types v1.0.0
+[1m[92m   Compiling[0m erased-serde v0.4.11
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[92m   Compiling[0m itoa v1.0.19
+[1m[92m   Compiling[0m litemap v0.8.3
+[1m[92m   Compiling[0m writeable v0.6.4
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m utf8_iter v1.1.0
+[1m[92m   Compiling[0m icu_locale_core v2.4.0
+[1m[92m   Compiling[0m darling_core v0.24.1
+[1m[92m   Compiling[0m potential_utf v0.1.6
+[1m[92m   Compiling[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m windows-sys v0.61.2
+[1m[92m   Compiling[0m icu_collections v2.4.0
+[1m[92m   Compiling[0m icu_provider v2.4.0
+[1m[92m   Compiling[0m new_debug_unreachable v1.0.6
+[1m[92m   Compiling[0m anyhow v1.0.104
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m serde_json v1.0.154
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[92m   Compiling[0m phf v0.13.1
+[1m[92m   Compiling[0m windows-interface v0.59.3
+[1m[92m   Compiling[0m windows-implement v0.60.2
+[1m[92m   Compiling[0m string_cache_codegen v0.6.1
+[1m[92m   Compiling[0m windows-strings v0.5.1
+[1m[92m   Compiling[0m windows-result v0.4.1
+[1m[92m   Compiling[0m darling_macro v0.24.1
+[1m[92m   Compiling[0m precomputed-hash v0.1.1
+[1m[92m   Compiling[0m darling v0.24.1
+[1m[92m   Compiling[0m windows-core v0.62.2
+[1m[92m   Compiling[0m serde_with_macros v3.25.0
+[1m[92m   Compiling[0m web_atoms v0.2.6
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m icu_properties v2.4.0
+[1m[92m   Compiling[0m icu_normalizer v2.4.0
+[1m[92m   Compiling[0m winnow v1.0.5
+[1m[92m   Compiling[0m toml_parser v1.1.5+spec-1.1.0
+[1m[92m   Compiling[0m string_cache v0.9.0
+[1m[92m   Compiling[0m idna_adapter v1.2.2
+[1m[92m   Compiling[0m toml_datetime v1.1.3+spec-1.1.0
+[1m[92m   Compiling[0m serde_spanned v1.1.3
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m toml_writer v1.2.0+spec-1.1.0
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m log v0.4.35
+[1m[92m   Compiling[0m dtoa v1.0.11
+[1m[92m   Compiling[0m dtoa-short v0.3.5
+[1m[92m   Compiling[0m toml v1.2.1+spec-1.1.0
+[1m[92m   Compiling[0m form_urlencoded v1.2.3
+[1m[92m   Compiling[0m idna v1.1.0
+[1m[92m   Compiling[0m tendril v0.5.1
+[1m[92m   Compiling[0m selectors v0.38.0
+[1m[92m   Compiling[0m cssparser-macros v0.7.1
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m indexmap v1.9.3
+[1m[92m   Compiling[0m uuid v1.29.3
+[1m[92m   Compiling[0m windows-threading v0.2.1
+[1m[92m   Compiling[0m camino v1.2.6
+[1m[92m   Compiling[0m alloc-no-stdlib v3.0.0
+[1m[92m   Compiling[0m alloc-stdlib v0.3.0
+[1m[92m   Compiling[0m windows-future v0.3.2
+[1m[92m   Compiling[0m cssparser v0.37.0
+[1m[92m   Compiling[0m markup5ever v0.39.0
+[1m[92m   Compiling[0m url v2.5.9
+[1m[92m   Compiling[0m derive_more v2.1.1
+[1m[92m   Compiling[0m winapi-util v0.1.11
+[1m[92m   Compiling[0m windows-numerics v0.3.1
+[1m[92m   Compiling[0m windows-collections v0.3.2
+[1m[92m   Compiling[0m serde_derive_internals v0.29.1
+[1m[92m   Compiling[0m servo_arc v0.4.3
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m equivalent v1.0.3
+[1m[92m   Compiling[0m powerfmt v0.2.1
+[1m[92m   Compiling[0m fnv v1.0.7
+[1m[92m   Compiling[0m bit-vec v0.8.0
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m schemars v0.8.22
+[1m[92m   Compiling[0m web-time v1.1.0
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m hashbrown v0.12.3
+[1m[92m   Compiling[0m deranged v0.5.9
+[1m[92m   Compiling[0m schemars_derive v0.8.22
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m cfb v0.14.0
+[1m[92m   Compiling[0m bit-set v0.8.0
+[1m[92m   Compiling[0m time v0.3.55
+[1m[92m   Compiling[0m windows v0.62.2
+[1m[92m   Compiling[0m same-file v1.0.6
+[1m[92m   Compiling[0m html5ever v0.39.0
+[1m[92m   Compiling[0m brotli-decompressor v6.3.2
+[1m[92m   Compiling[0m jsonptr v0.7.1
+[1m[92m   Compiling[0m cargo-platform v0.1.9
+[1m[92m   Compiling[0m quick-xml v0.42.0
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m tauri-utils v2.10.4
+[1m[92m   Compiling[0m dyn-clone v1.0.20
+[1m[92m   Compiling[0m bytes v1.12.2
+[1m[92m   Compiling[0m plist v1.10.4
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m brotli v9.1.3
+[1m[92m   Compiling[0m dom_query v0.28.0
+[1m[92m   Compiling[0m cargo_metadata v0.19.2
+[1m[92m   Compiling[0m json-patch v4.2.0
+[1m[92m   Compiling[0m walkdir v2.5.0
+[1m[92m   Compiling[0m serde-untagged v0.1.9
+[1m[92m   Compiling[0m infer v0.22.0
+[1m[92m   Compiling[0m urlpattern v0.6.0
+[1m[92m   Compiling[0m serde_with v3.25.0
+[1m[92m   Compiling[0m ctor v1.0.14
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[92m   Compiling[0m pkg-config v0.3.34
+[1m[92m   Compiling[0m clang-sys v1.9.1
+[1m[92m   Compiling[0m libloading v0.8.9
+[1m[92m   Compiling[0m clang v2.1.0
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[92m   Compiling[0m simd-adler32 v0.3.10
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m opencv-binding-generator v0.108.0
+[1m[92m   Compiling[0m vf-project v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-project)
+[1m[92m   Compiling[0m time-macros v0.2.32
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[92m   Compiling[0m crc32fast v1.5.5
+[1m[92m   Compiling[0m typenum v1.20.1
+[1m[92m   Compiling[0m raw-window-handle v0.6.2
+[1m[92m   Compiling[0m winsplit v0.1.0
+[1m[92m   Compiling[0m opencv v0.102.0
+[1m[92m   Compiling[0m hybrid-array v0.4.15
+[1m[92m   Compiling[0m webview2-com-sys v0.39.1
+[1m[92m   Compiling[0m zerocopy v0.8.63
+[1m[92m   Compiling[0m crossbeam-utils v0.8.23
+[1m[92m   Compiling[0m miniz_oxide v0.9.1
+[1m[92m   Compiling[0m ahash v0.8.12
+[1m[92m   Compiling[0m cookie v0.18.2
+[1m[92m   Compiling[0m vswhom-sys v0.1.3
+[1m[92m   Compiling[0m dpi v0.1.2
+[1m[92m   Compiling[0m vf-image v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-image)
+[1m[92m   Compiling[0m flate2 v1.1.11
+[1m[92m   Compiling[0m block-buffer v0.12.1
+[1m[92m   Compiling[0m crypto-common v0.2.2
+[1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[92m   Compiling[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m tauri v2.12.7
+[1m[92m   Compiling[0m tauri-plugin v2.7.4
+[1m[92m   Compiling[0m blake3 v1.8.7
+[1m[92m   Compiling[0m webview2-com-macros v0.8.1
+[1m[92m   Compiling[0m windows-version v0.1.7
+[1m[92m   Compiling[0m pin-project-lite v0.2.18
+[1m[92m   Compiling[0m const-oid v0.10.3
+[1m[92m   Compiling[0m digest v0.11.3
+[1m[92m   Compiling[0m webview2-com v0.39.1
+[1m[92m   Compiling[0m png v0.18.1
+[1m[92m   Compiling[0m crossbeam-channel v0.5.17
+[1m[92m   Compiling[0m libsqlite3-sys v0.30.1
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m wry v0.57.3
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[92m   Compiling[0m constant_time_eq v0.4.2
+[1m[92m   Compiling[0m tauri-runtime v2.12.4
+[1m[92m   Compiling[0m arrayvec v0.7.8
+[1m[92m   Compiling[0m sha2 v0.11.1
+[1m[92m   Compiling[0m ico v0.6.0
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[92m   Compiling[0m vswhom v0.1.0
+[1m[92m   Compiling[0m hashbrown v0.14.5
+[1m[92m   Compiling[0m tauri-plugin-fs v2.7.1
+[1m[92m   Compiling[0m winreg v0.56.0
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[92m   Compiling[0m ort-sys v2.0.0-rc.15
+[1m[92m   Compiling[0m tauri-runtime-wry v2.12.5
+[1m[92m   Compiling[0m muda v0.20.0
+[1m[92m   Compiling[0m option-ext v0.2.0
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m unicode-segmentation v1.13.3
+[1m[92m   Compiling[0m dirs-sys v0.5.0
+[1m[92m   Compiling[0m tao v0.37.3
+[1m[92m   Compiling[0m embed-resource v3.0.12
+[1m[92m   Compiling[0m hashlink v0.9.1
+[1m[92m   Compiling[0m softbuffer v0.4.8
+[1m[92m   Compiling[0m tauri-codegen v2.7.6
+[1m[92m   Compiling[0m keyboard-types v0.8.3
+[1m[92m   Compiling[0m serialize-to-javascript-impl v0.1.2
+[1m[92m   Compiling[0m vf-render v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-render)
+[1m[92m   Compiling[0m fallible-streaming-iterator v0.1.9
+[1m[92m   Compiling[0m fallible-iterator v0.3.0
+[1m[92m   Compiling[0m serialize-to-javascript v0.1.2
+[1m[92m   Compiling[0m tauri-macros v2.7.6
+[1m[92m   Compiling[0m tauri-winres v0.3.7
+[1m[92m   Compiling[0m dirs v7.0.0
+[1m[92m   Compiling[0m vf-media v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-media)
+[1m[92m   Compiling[0m rusqlite v0.32.1
+[1m[92m   Compiling[0m tokio v1.54.1
+[1m[92m   Compiling[0m window-vibrancy v0.8.1
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.8.4
+[1m[92m   Compiling[0m vf-fusion v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-fusion)
+[1m[92m   Compiling[0m vf-text v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-text)
+[1m[92m   Compiling[0m cargo_toml v1.0.1
+[1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m libloading v0.9.1
+[1m[92m   Compiling[0m http-range v0.1.6
+[1m[92m   Compiling[0m mime v0.3.18
+[1m[92m   Compiling[0m static_vcruntime v3.0.0
+[1m[92m   Compiling[0m rfd v0.17.2
+[1m[92m   Compiling[0m tauri-build v2.7.6
+[1m[92m   Compiling[0m ort v2.0.0-rc.15
+[1m[92m   Compiling[0m vf-cache v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-cache)
+[1m[92m   Compiling[0m veilframe v0.1.0 (D:\a\VeilFrame\VeilFrame\app\src-tauri)
+[1m[92m   Compiling[0m vf-core v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-core)
+[1m[92m   Compiling[0m vf-queue v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-queue)
+[1m[92m   Compiling[0m vf-vision v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-vision)
+[1m[92m   Compiling[0m vf-pipeline v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-pipeline)
+[1m[92m   Compiling[0m vf-export v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-export)
+[1m[92m   Compiling[0m vf-ocr v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-ocr)
+[1m[92m   Compiling[0m vf-session v0.1.0 (D:\a\VeilFrame\VeilFrame\crates\vf-session)
+[1m[93mwarning[0m[1m[97m: method `is_running` is never used[0m
+   [1m[96m--> [0msrc\batch.rs:119:12
+    [1m[96m|[0m
+[1m[96m 90[0m [1m[96m|[0m impl BatchManager {
+    [1m[96m|[0m [1m[96m-----------------[0m [1m[96mmethod in this implementation[0m
+[1m[96m...[0m
+[1m[96m119[0m [1m[96m|[0m     pub fn is_running(&self) -> bool {
+    [1m[96m|[0m            [1m[93m^^^^^^^^^^[0m
+    [1m[96m|[0m
+    [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[93mwarning[0m: `veilframe` (lib) generated 1 warning
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 4m 20s
+       Built application at: D:\a\VeilFrame\VeilFrame\app\src-tauri\target\release\veilframe.exe
+        Info Patching D:\a\VeilFrame\VeilFrame\app\src-tauri\target\release\veilframe.exe with bundle type information: nsis
+        Info Verifying NSIS package
+ Downloading https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.13/nsis-3.13.zip
+        Info validating hash
+        Info extracting NSIS
+ Downloading https://github.com/tauri-apps/nsis-tauri-utils/releases/download/nsis_tauri_utils-v0.5.3/nsis_tauri_utils.dll
+        Info validating hash
+        Info Target: x64
+     Running makensis to produce D:\a\VeilFrame\VeilFrame\app\src-tauri\target\release\bundle\nsis\VeilFrame_0.1.0_x64-setup.exe
+    Finished 1 bundle at:
+        D:\a\VeilFrame\VeilFrame\app\src-tauri\target\release\bundle\nsis\VeilFrame_0.1.0_x64-setup.exe (5.28 MiB)
+
+
+########## build.txt (errors) ##########
+226:[1m[92m  Downloaded[0m thiserror-impl v2.0.21
+234:[1m[92m  Downloaded[0m thiserror v2.0.21
+307:[1m[92m   Compiling[0m thiserror v2.0.21
+335:[1m[92m   Compiling[0m thiserror-impl v2.0.21
+########## gen.txt ##########
+########## gen.txt (errors) ##########
