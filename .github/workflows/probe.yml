@@ -1,5 +1,6 @@
-# 一次性诊断：确认 ONNX Runtime 预编译包的真实下载来源。
-# 只推到 probe 分支触发，不进 main CI。步骤的通过/失败即结论（无需读日志）。
+# 一次性诊断：确认 ONNX Runtime / ffmpeg 预编译包的真实下载来源。
+# 只推到 probe 分支触发。每个探测步骤 continue-on-error，
+# 结论看 API 里 steps[].outcome（failure = 资产不存在），一步跑完全部探测。
 name: Probe
 
 on:
@@ -13,79 +14,79 @@ jobs:
   probe:
     runs-on: ubuntu-22.04
     steps:
-      - name: 对照：ripgrep 资产可达
+      - name: 对照 ripgrep（应 OK）
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz"
 
-      - name: GitHub 资产 Linux v1.20.1
+      - name: ORT GitHub linux 1.20.1
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-x64-1.20.1.tgz"
 
-      - name: GitHub 资产 Win v1.20.1
+      - name: ORT GitHub win 1.20.1
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-win-x64-1.20.1.zip"
 
-      - name: GitHub 资产 macOS v1.20.1
+      - name: ORT GitHub osx 1.20.1
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-osx-arm64-1.20.1.tgz"
 
-      - name: GitHub 资产 Linux v1.19.2 对照
+      - name: ORT GitHub linux 1.19.2
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.19.2/onnxruntime-linux-x64-1.19.2.tgz"
 
-      - name: API 资产清单
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          code=$(curl -sS -o /tmp/rel.json -w "%{http_code}" --retry 2 \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/microsoft/onnxruntime/releases/tags/v1.20.1")
-          echo "HTTP $code"
-          if [ "$code" != "200" ]; then
-            echo "::notice::ORT tag v1.20.1 API 返回 HTTP $code"
-            head -c 300 /tmp/rel.json
-            exit 0
-          fi
-          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
-          import json
-          d = json.load(open('/tmp/rel.json'))
-          names = [a['name'] for a in d.get('assets', [])]
-          print('assets:', len(names))
-          for n in names:
-              print('-', n)
-          open('/tmp/names.txt', 'w').write('\n'.join(names))
-          PY
-          msg=$(tr '\n' '|' < /tmp/names.txt)
-          echo "::notice::ORT assets:: $msg"
+      - name: ORT GitHub linux 1.20.0
+        continue-on-error: true
+        run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.20.0/onnxruntime-linux-x64-1.20.0.tgz"
 
-      - name: ffmpeg-static Linux x64 资产
+      - name: ORT GitHub linux 1.21.0
+        continue-on-error: true
+        run: curl -sfIL -o /dev/null --retry 2 "https://github.com/microsoft/onnxruntime/releases/download/v1.21.0/onnxruntime-linux-x64-1.21.0.tgz"
+
+      - name: ORT tag 1.20.1 API 查询
+        continue-on-error: true
+        run: curl -sf --retry 2 -o /dev/null -H "Accept: application/vnd.github+json" "https://api.github.com/repos/microsoft/onnxruntime/releases/tags/v1.20.1"
+
+      - name: ffmpeg-static linux x64
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz"
 
-      - name: ffmpeg-static Win x64 资产
+      - name: ffmpeg-static win32 x64
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz"
 
-      - name: ffmpeg-static macOS arm64 资产
+      - name: ffmpeg-static darwin arm64
+        continue-on-error: true
         run: curl -sfIL -o /dev/null --retry 2 "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz"
 
-      - name: NuGet 备用包校验
+      - name: NuGet 1.20.1 三平台原生库齐备
+        continue-on-error: true
         run: |
           curl -sfL --retry 3 -o /tmp/ort.nupkg "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/1.20.1"
-          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
           import zipfile
           z = zipfile.ZipFile('/tmp/ort.nupkg')
-          nat = [n for n in z.namelist() if '/native/' in n and not n.endswith('/')]
-          for n in nat:
-              print(n)
-          assert any('linux-x64' in n and 'libonnxruntime' in n for n in nat), 'linux native 缺失'
+          need = [
+              'runtimes/linux-x64/native/libonnxruntime.so',
+              'runtimes/win-x64/native/onnxruntime.dll',
+              'runtimes/osx-arm64/native/libonnxruntime.dylib',
+          ]
+          have = set(z.namelist())
+          for n in need:
+              print(('OK  ' if n in have else 'MISS'), n)
+          assert all(n in have for n in need), 'missing natives'
           PY
 
-      - name: PyPI 备用包校验
+      - name: PyPI 1.20.1 manylinux wheel 含 libonnxruntime
+        continue-on-error: true
         run: |
           url=$(curl -sS --retry 2 "https://pypi.org/pypi/onnxruntime/1.20.1/json" \
             | python3 -c "import sys,json;d=json.load(sys.stdin);print(next(u['url'] for u in d['urls'] if 'manylinux' in u['filename'] and 'x86_64' in u['filename']))")
           echo "wheel: $url"
           curl -sfL --retry 3 -o /tmp/ort.whl "$url"
-          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
           import zipfile
           z = zipfile.ZipFile('/tmp/ort.whl')
-          capi = [n for n in z.namelist() if 'capi/' in n and ('libonnxruntime' in n or n.endswith('.dll'))]
-          for n in capi:
-              print(n)
-          assert any('libonnxruntime' in n for n in capi), 'wheel 内未见 libonnxruntime'
+          capi = [n for n in z.namelist() if '/capi/' in n and 'libonnxruntime' in n]
+          print('\n'.join(capi) or 'MISS')
+          assert capi, 'wheel 内未见 libonnxruntime'
           PY
