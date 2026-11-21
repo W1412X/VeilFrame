@@ -9,9 +9,9 @@ publish.workspace = true
 vf-project = { path = "../vf-project" }
 vf-text = { path = "../vf-text" }
 vf-image = { path = "../vf-image" }
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc"] }
+opencv = { version = "0.102", default-features = false, features = ["clang-runtime", "imgproc"] }
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["load-dynamic"] }
 thiserror.workspace = true
 
 [dev-dependencies]
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgcodecs"] }
+opencv = { version = "0.102", default-features = false, features = ["clang-runtime", "imgcodecs"] }

@@ -10,5 +10,5 @@ vf-project = { path = "../vf-project" }
 vf-media = { path = "../vf-media" }
 vf-render = { path = "../vf-render" }
 vf-image = { path = "../vf-image" }
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime"] }
+opencv = { version = "0.102", default-features = false, features = ["clang-runtime"] }
 thiserror.workspace = true
