@@ -8,5 +8,5 @@ publish.workspace = true
 [dependencies]
 vf-project = { path = "../vf-project" }
 vf-image = { path = "../vf-image" }
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime", "imgproc"] }
+opencv = { version = "0.102", default-features = false, features = ["clang-runtime", "imgproc"] }
 thiserror.workspace = true

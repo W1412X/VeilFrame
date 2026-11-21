@@ -13,5 +13,5 @@ vf-image = { path = "../vf-image" }
 vf-media = { path = "../vf-media" }
 vf-vision = { path = "../vf-vision" }
 vf-text = { path = "../vf-text" }
-opencv = { version = "0.93", default-features = false, features = ["clang-runtime"] }
+opencv = { version = "0.102", default-features = false, features = ["clang-runtime"] }
 thiserror.workspace = true
