@@ -113,6 +113,16 @@ fn blend_feathered(frame: &mut core::Mat, effect: &core::Mat, mask: &core::Mat) 
     let mut alpha32 = core::Mat::default();
     soft.convert_to(&mut alpha32, core::CV_32F, 1.0 / 255.0, 0.0)?;
     let mut alpha3 = core::Mat::default();
+    // OpenCV 4.11 起 cvtColor 多一个 AlgorithmHint 参数，见 build/opencv_version.rs。
+    #[cfg(opencv_ge411)]
+    imgproc::cvt_color(
+        &alpha32,
+        &mut alpha3,
+        imgproc::COLOR_GRAY2RGB,
+        0,
+        core::AlgorithmHint::ALGO_HINT_DEFAULT,
+    )?;
+    #[cfg(not(opencv_ge411))]
     imgproc::cvt_color(&alpha32, &mut alpha3, imgproc::COLOR_GRAY2RGB, 0)?;
 
     let mut orig = core::Mat::default();
