@@ -64,6 +64,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 安装 LLVM（opencv 绑定生成：MSVC 14.52 的 STL 要求 Clang ≥ 22）
+        if: runner.os == 'Windows'
+        run: |
+          choco install llvm --no-progress -y --force
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> "$GITHUB_ENV"
+
       - name: 释放 Linux 磁盘空间
         if: runner.os == 'Linux'
         run: |
