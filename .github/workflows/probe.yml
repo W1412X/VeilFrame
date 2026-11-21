@@ -1,6 +1,5 @@
-# 诊断（probe 分支）：验证 release 三平台修复，日志尾巴提交到 probe-log-* 分支
-# （绕开 Actions 日志的管理员权限）。日志分支的提交不会触发本 workflow。
-# 关键点：复现步骤保留真实退出码（不用 || 掩盖），失败即 job 失败。
+# 诊断（probe 分支）：只验 Windows fetch-ort 的相对临时路径修复。
+# 日志提交到 probe-log-windows 分支（*.log 被 gitignore，用 .txt）。
 name: Probe
 
 on:
@@ -12,7 +11,7 @@ permissions:
 
 jobs:
   windows-ort:
-    name: 验证 Windows fetch-ort（加固后）
+    name: 验证 Windows fetch-ort（相对临时路径）
     runs-on: windows-latest
     defaults:
       run:
@@ -23,108 +22,17 @@ jobs:
       - name: 运行 fetch-ort.sh windows
         run: |
           code=0
-          bash scripts/ci/fetch-ort.sh windows probe-out > probe-win.log 2>&1 || code=$?
-          tail -40 probe-win.log
+          bash scripts/ci/fetch-ort.sh windows probe-out > probe-win.txt 2>&1 || code=$?
+          tail -40 probe-win.txt
           exit $code
 
       - name: 提交日志
         if: always()
         run: |
           mkdir -p probe-logs
-          cp probe-win.log probe-logs/windows-ort.log 2>/dev/null || echo "无日志" > probe-logs/windows-ort.log
+          cp probe-win.txt probe-logs/windows-ort.txt 2>/dev/null || echo "无日志" > probe-logs/windows-ort.txt
           git config user.name probe
           git config user.email probe@local
-          git add probe-logs/windows-ort.log
+          git add probe-logs/windows-ort.txt
           git diff --cached --quiet || git commit -m "probe log: windows ort"
           git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-windows
-
-  linux-vcpkg:
-    name: 验证 Linux vcpkg OpenCV（补 autoconf 后）
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-    env:
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-      VCPKGRS_TRIPLET: x64-linux-static
-      VCPKGRS_DYNAMIC: "0"
-      OPENCV_MSVC_CRT: md
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 释放磁盘
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/local/share/boost
-          sudo apt-get clean
-
-      - name: 系统依赖
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            libxdo-dev libssl-dev patchelf pkg-config cmake ninja-build \
-            clang libclang-dev llvm-dev build-essential python3-pip \
-            autoconf autoconf-archive automake libtool
-
-      - name: vcpkg 安装 opencv4
-        run: |
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
-          bash "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
-          code=0
-          "$VCPKG_ROOT/vcpkg" install "opencv4:$VCPKGRS_TRIPLET" \
-            --overlay-triplets="$GITHUB_WORKSPACE/ci/triplets" --clean-after-build > vcpkg.log 2>&1 || code=$?
-          exit $code
-
-      - name: 收集诊断
-        if: always()
-        run: |
-          { echo "===== tail ====="; tail -150 vcpkg.log 2>/dev/null; echo "===== errors ====="; grep -iE "error|failed" vcpkg.log 2>/dev/null | tail -80; } > vcpkg-diag.txt || true
-          cat vcpkg-diag.txt
-
-      - name: 提交日志
-        if: always()
-        run: |
-          mkdir -p probe-logs
-          cp vcpkg-diag.txt probe-logs/linux-vcpkg.txt 2>/dev/null || echo "无日志" > probe-logs/linux-vcpkg.txt
-          git config user.name probe
-          git config user.email probe@local
-          git add probe-logs/linux-vcpkg.txt
-          git diff --cached --quiet || git commit -m "probe log: linux vcpkg"
-          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-linux
-
-  macos-ort:
-    name: 验证 macOS 15 fetch-ort 与 npm ffmpeg
-    runs-on: macos-15
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 运行 fetch-ort.sh macos
-        run: |
-          code=0
-          bash scripts/ci/fetch-ort.sh macos probe-out > probe-mac.log 2>&1 || code=$?
-          tail -40 probe-mac.log
-          exit $code
-
-      - name: npm 静态 ffmpeg
-        if: always()
-        run: |
-          code=0
-          (cd app && npm install --no-save --package-lock=false --registry=https://registry.npmjs.org \
-            ffmpeg-static@5.3.0 ffprobe-static@3.1.0) > probe-mac-npm.log 2>&1 || code=$?
-          ls -la app/node_modules/ffmpeg-static/ffmpeg \
-            app/node_modules/ffprobe-static/bin/darwin/arm64/ffprobe >> probe-mac-npm.log 2>&1 || code=$?
-          tail -30 probe-mac-npm.log
-          exit $code
-
-      - name: 提交日志
-        if: always()
-        run: |
-          mkdir -p probe-logs
-          cp probe-mac.log probe-logs/macos-ort.log 2>/dev/null || echo "无日志" > probe-logs/macos-ort.log
-          cp probe-mac-npm.log probe-logs/macos-npm.log 2>/dev/null || echo "无日志" > probe-logs/macos-npm.log
-          git config user.name probe
-          git config user.email probe@local
-          git add probe-logs/
-          git diff --cached --quiet || git commit -m "probe log: macos"
-          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-macos
