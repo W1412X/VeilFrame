@@ -96,7 +96,8 @@ fn include_header_version() -> Option<(u32, u32)> {
     None
 }
 
-/// vcpkg 安装树里的 `opencv4.pc`（Release 构建走这条，runner 上没有系统 OpenCV）。
+/// vcpkg 安装树里的版本信息（Release 构建走这条，runner 上没有系统 OpenCV）。
+/// Windows 的安装树可能没有 opencv4.pc，此时退回读 CMake 版本文件。
 fn vcpkg_pc_version() -> Option<(u32, u32)> {
     let root = PathBuf::from(env::var_os("VCPKG_ROOT")?);
     let mut dirs = Vec::new();
@@ -109,11 +110,34 @@ fn vcpkg_pc_version() -> Option<(u32, u32)> {
         }
     }
     for dir in dirs {
-        let Ok(text) = std::fs::read_to_string(dir.join("lib/pkgconfig/opencv4.pc")) else {
+        if let Ok(text) = std::fs::read_to_string(dir.join("lib/pkgconfig/opencv4.pc")) {
+            if let Some(v) = text.lines().find_map(|l| l.strip_prefix("Version:")) {
+                return Some(parse_version(v.trim()));
+            }
+        }
+        let cmake_ver = dir.join("share/opencv4/OpenCVConfig-version.cmake");
+        if let Ok(text) = std::fs::read_to_string(&cmake_ver) {
+            if let Some(v) = version_from_cmake(&text) {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// 从 `set(PACKAGE_VERSION "4.14.0")` 这类行里取版本号。
+fn version_from_cmake(text: &str) -> Option<(u32, u32)> {
+    for line in text.lines() {
+        if !line.contains("PACKAGE_VERSION") {
             continue;
-        };
-        if let Some(v) = text.lines().find_map(|l| l.strip_prefix("Version:")) {
-            return Some(parse_version(v.trim()));
+        }
+        let ver: String = line
+            .chars()
+            .skip_while(|c| !c.is_ascii_digit())
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
+        if ver.contains('.') {
+            return Some(parse_version(&ver));
         }
     }
     None

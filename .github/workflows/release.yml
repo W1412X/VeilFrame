@@ -55,7 +55,8 @@ jobs:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKGRS_TRIPLET: ${{ matrix.triplet }}
       VCPKGRS_DYNAMIC: "0"
-      OPENCV_MSVC_CRT: md
+      # x64-windows-static-md = 静态库 + 动态 CRT(/MD)；opencv crate 只认 static/dynamic。
+      OPENCV_MSVC_CRT: dynamic
       # 钉住 vcpkg 版本保证可复现（当前 commit 的 opencv4 = 4.14.0）。
       # cvt_color 的跨版本差异由 build/opencv_version.rs 的 cfg 分支兜底；
       # 升级 VCPKG_COMMIT 前先跑 probe 分支的全链路探针暴露新漂移。
