@@ -1,5 +1,6 @@
-# 诊断（probe 分支）：只验 Windows fetch-ort 的相对临时路径修复。
-# 日志提交到 probe-log-windows 分支（*.log 被 gitignore，用 .txt）。
+# 诊断（probe 分支）：三平台全链路复现到 tauri build（Release 第15步的失败点），
+# 日志（tail + error 提取）提交到 probe-log-* 分支，绕开 Actions 日志的管理员权限。
+# 每步保留真实退出码；日志分支的提交不会触发本 workflow。
 name: Probe
 
 on:
@@ -10,29 +11,300 @@ permissions:
   contents: write
 
 jobs:
-  windows-ort:
-    name: 验证 Windows fetch-ort（相对临时路径）
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
+  macos-build:
+    name: macOS 全链路至 tauri build
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKGRS_TRIPLET: arm64-osx-static
+      VCPKGRS_DYNAMIC: "0"
+      OPENCV_MSVC_CRT: md
     steps:
       - uses: actions/checkout@v4
 
-      - name: 运行 fetch-ort.sh windows
+      - name: brew 构建工具
+        run: brew install cmake ninja pkg-config autoconf automake libtool
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+
+      - name: 恢复 vcpkg 缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg-cache
+          key: vcpkg-${{ runner.os }}-arm64-osx-static-${{ hashFiles('ci/triplets/**') }}-v1
+          restore-keys: |
+            vcpkg-${{ runner.os }}-arm64-osx-static-
+
+      - name: 安装 OpenCV（vcpkg）
         run: |
           code=0
-          bash scripts/ci/fetch-ort.sh windows probe-out > probe-win.txt 2>&1 || code=$?
-          tail -40 probe-win.txt
+          {
+            if [ ! -x "$VCPKG_ROOT/vcpkg" ] && [ ! -f "$VCPKG_ROOT/vcpkg.exe" ]; then
+              git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+              bash "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+            fi
+            WS="$GITHUB_WORKSPACE"
+            mkdir -p "$WS/vcpkg-cache"
+            export VCPKG_BINARY_SOURCES="clear;files,$WS/vcpkg-cache,readwrite"
+            "$VCPKG_ROOT/vcpkg" install "opencv4:$VCPKGRS_TRIPLET" \
+              --overlay-triplets="$WS/ci/triplets" --clean-after-build
+          } > vcpkg.txt 2>&1 || code=$?
+          tail -30 vcpkg.txt
+          exit $code
+
+      - name: 前端依赖
+        working-directory: app
+        run: |
+          code=0
+          npm ci --registry=https://registry.npmjs.org > ../npm.txt 2>&1 || code=$?
+          tail -15 ../npm.txt
+          exit $code
+
+      - name: 使用 crates.io
+        run: rm -f .cargo/config.toml
+
+      - name: 构建安装包
+        working-directory: app
+        run: |
+          code=0
+          npm run tauri build -- --bundles dmg > ../build.txt 2>&1 || code=$?
+          tail -60 ../build.txt
+          grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
           exit $code
 
       - name: 提交日志
         if: always()
         run: |
           mkdir -p probe-logs
-          cp probe-win.txt probe-logs/windows-ort.txt 2>/dev/null || echo "无日志" > probe-logs/windows-ort.txt
+          {
+            for f in vcpkg.txt npm.txt build.txt; do
+              if [ -f "$f" ]; then
+                echo "########## $f (tail) ##########"
+                tail -80 "$f"
+                echo "########## $f (errors) ##########"
+                grep -nE "error|Error|failed|FAILED" "$f" | tail -60 || true
+              fi
+            done
+          } > probe-logs/macos-build.txt || echo "无日志" > probe-logs/macos-build.txt
           git config user.name probe
           git config user.email probe@local
-          git add probe-logs/windows-ort.txt
-          git diff --cached --quiet || git commit -m "probe log: windows ort"
-          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-windows
+          git add probe-logs/macos-build.txt
+          git diff --cached --quiet || git commit -m "probe log: macos build"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-macos-build
+
+  linux-build:
+    name: Linux 全链路至 tauri build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 140
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKGRS_TRIPLET: x64-linux-static
+      VCPKGRS_DYNAMIC: "0"
+      OPENCV_MSVC_CRT: md
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 释放磁盘
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo apt-get clean
+
+      - name: 系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libssl-dev patchelf pkg-config cmake ninja-build \
+            clang libclang-dev llvm-dev build-essential python3-pip \
+            autoconf autoconf-archive automake libtool
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+
+      - name: 恢复 vcpkg 缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg-cache
+          key: vcpkg-${{ runner.os }}-x64-linux-static-${{ hashFiles('ci/triplets/**') }}-v1
+          restore-keys: |
+            vcpkg-${{ runner.os }}-x64-linux-static-
+
+      - name: 安装 OpenCV（vcpkg）
+        run: |
+          code=0
+          {
+            if [ ! -x "$VCPKG_ROOT/vcpkg" ] && [ ! -f "$VCPKG_ROOT/vcpkg.exe" ]; then
+              git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+              bash "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+            fi
+            WS="$GITHUB_WORKSPACE"
+            mkdir -p "$WS/vcpkg-cache"
+            export VCPKG_BINARY_SOURCES="clear;files,$WS/vcpkg-cache,readwrite"
+            "$VCPKG_ROOT/vcpkg" install "opencv4:$VCPKGRS_TRIPLET" \
+              --overlay-triplets="$WS/ci/triplets" --clean-after-build
+          } > vcpkg.txt 2>&1 || code=$?
+          tail -30 vcpkg.txt
+          exit $code
+
+      - name: 前端依赖
+        working-directory: app
+        run: |
+          code=0
+          npm ci --registry=https://registry.npmjs.org > ../npm.txt 2>&1 || code=$?
+          tail -15 ../npm.txt
+          exit $code
+
+      - name: 使用 crates.io
+        run: rm -f .cargo/config.toml
+
+      - name: 构建安装包
+        working-directory: app
+        run: |
+          code=0
+          npm run tauri build -- --bundles deb,appimage > ../build.txt 2>&1 || code=$?
+          tail -60 ../build.txt
+          grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
+          exit $code
+
+      - name: 提交日志
+        if: always()
+        run: |
+          mkdir -p probe-logs
+          {
+            for f in vcpkg.txt npm.txt build.txt; do
+              if [ -f "$f" ]; then
+                echo "########## $f (tail) ##########"
+                tail -80 "$f"
+                echo "########## $f (errors) ##########"
+                grep -nE "error|Error|failed|FAILED" "$f" | tail -60 || true
+              fi
+            done
+          } > probe-logs/linux-build.txt || echo "无日志" > probe-logs/linux-build.txt
+          git config user.name probe
+          git config user.email probe@local
+          git add probe-logs/linux-build.txt
+          git diff --cached --quiet || git commit -m "probe log: linux build"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-linux-build
+
+  windows-build:
+    name: Windows 全链路至 tauri build
+    runs-on: windows-latest
+    timeout-minutes: 140
+    defaults:
+      run:
+        shell: bash
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKGRS_TRIPLET: x64-windows-static-md
+      VCPKGRS_DYNAMIC: "0"
+      OPENCV_MSVC_CRT: md
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+
+      - name: 恢复 vcpkg 缓存
+        uses: actions/cache@v4
+        with:
+          path: |
+            vcpkg/installed
+            vcpkg-cache
+          key: vcpkg-${{ runner.os }}-x64-windows-static-md-${{ hashFiles('ci/triplets/**') }}-v1
+          restore-keys: |
+            vcpkg-${{ runner.os }}-x64-windows-static-md-
+
+      - name: 安装 OpenCV（vcpkg）
+        run: |
+          code=0
+          {
+            if [ ! -x "$VCPKG_ROOT/vcpkg" ] && [ ! -f "$VCPKG_ROOT/vcpkg.exe" ]; then
+              git clone --depth 1 https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+              if [ "$RUNNER_OS" = "Windows" ]; then
+                cmd //c "$(cygpath -w "$VCPKG_ROOT\\bootstrap-vcpkg.bat") -disableMetrics"
+              else
+                bash "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+              fi
+            fi
+            WS="$GITHUB_WORKSPACE"
+            if [ "$RUNNER_OS" = "Windows" ]; then WS="$(cygpath -m "$WS")"; fi
+            mkdir -p "$WS/vcpkg-cache"
+            export VCPKG_BINARY_SOURCES="clear;files,$WS/vcpkg-cache,readwrite"
+            "$VCPKG_ROOT/vcpkg" install "opencv4:$VCPKGRS_TRIPLET" \
+              --overlay-triplets="$WS/ci/triplets" --clean-after-build
+          } > vcpkg.txt 2>&1 || code=$?
+          tail -30 vcpkg.txt
+          exit $code
+
+      - name: 前端依赖
+        working-directory: app
+        run: |
+          code=0
+          npm ci --registry=https://registry.npmjs.org > ../npm.txt 2>&1 || code=$?
+          tail -15 ../npm.txt
+          exit $code
+
+      - name: 使用 crates.io
+        run: rm -f .cargo/config.toml
+
+      - name: 构建安装包
+        working-directory: app
+        run: |
+          code=0
+          npm run tauri build -- --bundles nsis > ../build.txt 2>&1 || code=$?
+          tail -60 ../build.txt
+          grep -nE "error(\[|:| )" ../build.txt | tail -40 || true
+          exit $code
+
+      - name: 提交日志
+        if: always()
+        run: |
+          mkdir -p probe-logs
+          {
+            for f in vcpkg.txt npm.txt build.txt; do
+              if [ -f "$f" ]; then
+                echo "########## $f (tail) ##########"
+                tail -80 "$f"
+                echo "########## $f (errors) ##########"
+                grep -nE "error|Error|failed|FAILED" "$f" | tail -60 || true
+              fi
+            done
+          } > probe-logs/windows-build.txt || echo "无日志" > probe-logs/windows-build.txt
+          git config user.name probe
+          git config user.email probe@local
+          git add probe-logs/windows-build.txt
+          git diff --cached --quiet || git commit -m "probe log: windows build"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:probe-log-windows-build
