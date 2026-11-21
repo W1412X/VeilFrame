@@ -1,0 +1,113 @@
+########## vcpkg.txt ##########
+Downloading vcpkg-macos...
+vcpkg package management program version 2025-03-22-d4dd14112c2026ee57e59f966ecfa3b9137bd143
+
+See LICENSE.txt for license information.
+Computing installation plan...
+The following packages are already installed:
+    opencv4[core,webp,tiff,thread,quirc,png,jpeg,intrinsics,highgui,gapi,fs,dnn,calib3d]:arm64-osx-static@4.10.0#6
+opencv4:arm64-osx-static is already installed
+Total install time: 308 us
+opencv4 is compatible with built-in CMake variables. In case of multiple OpenCV version installed, set OpenCV_ROOT *before* the find_package call:
+
+    set(OpenCV_ROOT "${VCPKG_INSTALLED_DIR}/arm64-osx-static/share/opencv4")
+    find_package(OpenCV REQUIRED)
+
+########## vcpkg.txt (tail) ##########
+Downloading vcpkg-macos...
+vcpkg package management program version 2025-03-22-d4dd14112c2026ee57e59f966ecfa3b9137bd143
+
+See LICENSE.txt for license information.
+Computing installation plan...
+The following packages are already installed:
+    opencv4[core,webp,tiff,thread,quirc,png,jpeg,intrinsics,highgui,gapi,fs,dnn,calib3d]:arm64-osx-static@4.10.0#6
+opencv4:arm64-osx-static is already installed
+Total install time: 308 us
+opencv4 is compatible with built-in CMake variables. In case of multiple OpenCV version installed, set OpenCV_ROOT *before* the find_package call:
+
+    set(OpenCV_ROOT "${VCPKG_INSTALLED_DIR}/arm64-osx-static/share/opencv4")
+    find_package(OpenCV REQUIRED)
+
+########## vcpkg.txt (errors) ##########
+########## npm.txt ##########
+
+added 103 packages, and audited 104 packages in 2s
+
+18 packages are looking for funding
+  run `npm fund` for details
+
+6 vulnerabilities (3 moderate, 1 high, 2 critical)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+########## npm.txt (errors) ##########
+########## build.txt ##########
+
+> veilframe-ui@0.1.0 tauri
+> tauri build --bundles dmg
+
+        Info Looking up installed tauri packages to check mismatched versions...
+        Warn The bundle identifier "com.veilframe.app" set in `"tauri.conf.json" identifier` ends with `.app`. This is not recommended because it conflicts with the application bundle extension on macOS.
+     Running beforeBuildCommand `npm run build`
+
+> veilframe-ui@0.1.0 build
+> tsc --noEmit && vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 47 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                  [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:  0.27 kB[22m
+[2mdist/[22m[2massets/[22m[35mindex-JR7SSO85.css   [39m[1m[2m  9.83 kB[22m[1m[22m[2m │ gzip:  2.79 kB[22m
+[2mdist/[22m[2massets/[22m[36mdist-js-BXWZoPZE.js  [39m[1m[2m  0.29 kB[22m[1m[22m[2m │ gzip:  0.18 kB[22m
+[2mdist/[22m[2massets/[22m[36mindex-DrurB348.js    [39m[1m[2m186.16 kB[22m[1m[22m[2m │ gzip: 62.07 kB[22m
+[32m✓ built in 1.19s[39m
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m opencv-binding-generator v0.108.0
+[1m[92m  Downloaded[0m opencv v0.102.0
+[1m[92m   Compiling[0m clang-sys v1.9.1
+[1m[92m   Compiling[0m vf-project v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-project)
+[1m[92m   Compiling[0m vf-image v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-image)
+[1m[92m   Compiling[0m vf-render v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-render)
+[1m[92m   Compiling[0m vf-media v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-media)
+[1m[92m   Compiling[0m vf-fusion v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-fusion)
+[1m[92m   Compiling[0m vf-text v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-text)
+[1m[92m   Compiling[0m vf-cache v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-cache)
+[1m[92m   Compiling[0m veilframe v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/app/src-tauri)
+[1m[92m   Compiling[0m clang v2.1.0
+[1m[92m   Compiling[0m vf-core v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-core)
+[1m[92m   Compiling[0m opencv-binding-generator v0.108.0
+[1m[92m   Compiling[0m vf-queue v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-queue)
+[1m[92m   Compiling[0m opencv v0.102.0
+[1m[92m   Compiling[0m vf-vision v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-vision)
+[1m[92m   Compiling[0m vf-ocr v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-ocr)
+[1m[92m   Compiling[0m vf-pipeline v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-pipeline)
+[1m[92m   Compiling[0m vf-export v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-export)
+[1m[92m   Compiling[0m vf-session v0.1.0 (/Users/runner/work/VeilFrame/VeilFrame/crates/vf-session)
+[1m[33mwarning[0m[1m: method `is_running` is never used[0m
+   [1m[94m--> [0msrc/batch.rs:119:12
+    [1m[94m|[0m
+[1m[94m 90[0m [1m[94m|[0m impl BatchManager {
+    [1m[94m|[0m [1m[94m-----------------[0m [1m[94mmethod in this implementation[0m
+[1m[94m...[0m
+[1m[94m119[0m [1m[94m|[0m     pub fn is_running(&self) -> bool {
+    [1m[94m|[0m            [1m[33m^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m: `veilframe` (lib) generated 1 warning
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 08s
+       Built application at: /Users/runner/work/VeilFrame/VeilFrame/app/src-tauri/target/release/veilframe
+    Bundling VeilFrame.app (/Users/runner/work/VeilFrame/VeilFrame/app/src-tauri/target/release/bundle/macos/VeilFrame.app)
+    Bundling VeilFrame_0.1.0_aarch64.dmg (/Users/runner/work/VeilFrame/VeilFrame/app/src-tauri/target/release/bundle/dmg/VeilFrame_0.1.0_aarch64.dmg)
+     Running bundle_dmg.sh
+    Cleaning /Users/runner/work/VeilFrame/VeilFrame/app/src-tauri/target/release/bundle/macos/VeilFrame.app
+    Finished 1 bundle at:
+        /Users/runner/work/VeilFrame/VeilFrame/app/src-tauri/target/release/bundle/dmg/VeilFrame_0.1.0_aarch64.dmg (7.35 MiB)
+
+
+########## build.txt (errors) ##########
