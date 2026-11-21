@@ -350,8 +350,8 @@ jobs:
         run: |
           # 重跑失败的构建（-vv）以捕获 opencv 生成脚本的 stdout（成功时被
           # cargo 吞掉），并检查 types.rs 里 GpuMat/UMat 的 vector_extern 条目。
-          (cd src-tauri && cargo build --release -p veilframe -vv 2>&1 | grep -aE "=== |error\[E|error:" | head -200) > gen.txt || true
-          for d in src-tauri/target/*/build/opencv-*/out/opencv; do
+          (cd app/src-tauri && cargo build --release -p veilframe -vv 2>&1 | grep -aE "=== |error\[E|error:|WARNING" | head -240) > gen.txt || true
+          for d in app/src-tauri/target/*/build/opencv-*/out/opencv; do
             [ -f "$d/types.rs" ] || continue
             { echo "== $d"
               wc -c "$d/types.rs"
