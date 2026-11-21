@@ -19,10 +19,22 @@ mkdir -p "$dest"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-curl -sfL --retry 3 --retry-delay 2 -o "$tmp/ort.nupkg" \
+# --retry-all-errors 覆盖瞬断（连接重置/SSL 中断），这类错误默认不会被 --retry 重试。
+curl -sfL --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 20 \
+  -o "$tmp/ort.nupkg" \
   "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/$ver"
+test -s "$tmp/ort.nupkg" || { echo "下载 ONNX Runtime 包为空" >&2; exit 1; }
 
-py="$(command -v python3 || command -v python)"
+# 选一个真实可用的 Python，跳过 Windows 的 Microsoft Store 占位别名。
+py=""
+for c in python3 python; do
+  p="$(command -v "$c" 2>/dev/null || true)"
+  [ -n "$p" ] || continue
+  case "$p" in *WindowsApps*) continue ;; esac
+  py="$c"
+  break
+done
+[ -n "$py" ] || { echo "找不到可用的 Python 解释器" >&2; exit 1; }
 "$py" - "$tmp/ort.nupkg" "$rid" "$dest" <<'PY'
 import os
 import shutil

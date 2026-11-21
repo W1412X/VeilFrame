@@ -40,7 +40,7 @@ jobs:
             ffmpeg_src: ffmpeg.exe
             ffprobe_src: bin/win32/x64/ffprobe.exe
             exe: ".exe"
-          - os: macos-14
+          - os: macos-15
             platform: macos-arm64
             triplet: arm64-osx-static
             bundles: dmg
@@ -74,7 +74,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             libxdo-dev libssl-dev patchelf pkg-config cmake ninja-build \
-            clang libclang-dev llvm-dev build-essential python3-pip
+            clang libclang-dev llvm-dev build-essential python3-pip \
+            autoconf autoconf-archive automake libtool
 
       - name: 安装 macOS 构建工具
         if: runner.os == 'macOS'
