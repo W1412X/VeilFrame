@@ -236,6 +236,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 安装 LLVM（opencv 绑定生成：MSVC 14.52 的 STL 要求 Clang >= 22）
+        run: |
+          choco install llvm --no-progress -y --force
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> "$GITHUB_ENV"
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/setup-node@v4
