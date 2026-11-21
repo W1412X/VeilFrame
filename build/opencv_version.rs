@@ -20,6 +20,9 @@ fn main() {
     println!("cargo:rerun-if-env-changed=VCPKG_ROOT");
     println!("cargo:rerun-if-env-changed=VCPKGRS_TRIPLET");
     println!("cargo:rustc-check-cfg=cfg(opencv_ge411)");
+    // 本文件在 package 目录之外（crates/<name>/ 才是 package），cargo 默认的
+    // 源文件跟踪不包含它，必须显式声明，否则改这里不会重跑 build script。
+    println!("cargo:rerun-if-changed=../../build/opencv_version.rs");
 
     let (major, minor) = detect().unwrap_or_else(|| {
         let vcpkg_root = env::var("VCPKG_ROOT").unwrap_or_else(|_| "(未设置)".into());
@@ -28,6 +31,18 @@ fn main() {
             .join("installed")
             .join(&triplet)
             .join("lib/pkgconfig/opencv4.pc");
+        let share = PathBuf::from(&vcpkg_root)
+            .join("installed")
+            .join(&triplet)
+            .join("share/opencv4");
+        let listing = std::fs::read_dir(&share)
+            .map(|rd| {
+                rd.flatten()
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_else(|_| format!("(读取失败: {})", share.display()));
         let pkg_config_ok = std::process::Command::new("pkg-config")
             .args(["--modversion", "opencv4"])
             .output()
@@ -38,6 +53,7 @@ fn main() {
              \x20 VCPKG_ROOT={vcpkg_root}\n\
              \x20 VCPKGRS_TRIPLET={triplet}\n\
              \x20 候选 pc={}（存在={}）\n\
+             \x20 share/opencv4 内容: {listing}\n\
              \x20 OPENCV_INCLUDE_PATHS={}\n\
              \x20 pkg-config opencv4 可用={pkg_config_ok}\n\
              \x20 请设置 OPENCV_VERSION=4.x.y 或修正上述任一路径",
