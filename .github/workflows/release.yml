@@ -28,9 +28,7 @@ jobs:
             platform: linux-x64
             triplet: x64-linux-static
             bundles: deb,appimage
-            ort_asset: onnxruntime-linux-x64-1.20.1.tgz
-            ort_lib: libonnxruntime.so.1.20.1
-            ort_out: libonnxruntime.so
+            ort_plat: linux
             ffmpeg_src: ffmpeg
             ffprobe_src: bin/linux/x64/ffprobe
             exe: ""
@@ -38,19 +36,15 @@ jobs:
             platform: windows-x64
             triplet: x64-windows-static-md
             bundles: nsis
-            ort_asset: onnxruntime-win-x64-1.20.1.zip
-            ort_lib: onnxruntime.dll
-            ort_out: onnxruntime.dll
+            ort_plat: windows
             ffmpeg_src: ffmpeg.exe
             ffprobe_src: bin/win32/x64/ffprobe.exe
             exe: ".exe"
-          - os: macos-14
+          - os: macos-15
             platform: macos-arm64
             triplet: arm64-osx-static
             bundles: dmg
-            ort_asset: onnxruntime-osx-arm64-1.20.1.tgz
-            ort_lib: libonnxruntime.1.20.1.dylib
-            ort_out: libonnxruntime.dylib
+            ort_plat: macos
             ffmpeg_src: ffmpeg
             ffprobe_src: bin/darwin/arm64/ffprobe
             exe: ""
@@ -80,7 +74,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             libxdo-dev libssl-dev patchelf pkg-config cmake ninja-build \
-            clang libclang-dev llvm-dev build-essential python3-pip
+            clang libclang-dev llvm-dev build-essential python3-pip \
+            autoconf autoconf-archive automake libtool
 
       - name: 安装 macOS 构建工具
         if: runner.os == 'macOS'
@@ -137,18 +132,7 @@ jobs:
           chmod +x "src-tauri/resources/bin/ffmpeg${{ matrix.exe }}" "src-tauri/resources/bin/ffprobe${{ matrix.exe }}"
 
       - name: 下载 ONNX Runtime
-        run: |
-          mkdir -p "$RUNNER_TEMP/ort"
-          curl -L --fail --retry 3 -o "$RUNNER_TEMP/ort/asset" \
-            "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/${{ matrix.ort_asset }}"
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            cd "$RUNNER_TEMP/ort"
-            powershell -NoProfile -Command "Expand-Archive -Force -Path asset -DestinationPath ."
-          else
-            tar -xf "$RUNNER_TEMP/ort/asset" -C "$RUNNER_TEMP/ort"
-          fi
-          cp "$RUNNER_TEMP/ort"/onnxruntime-*/lib/"${{ matrix.ort_lib }}" \
-            "app/src-tauri/resources/onnxruntime/${{ matrix.ort_out }}"
+        run: bash scripts/ci/fetch-ort.sh ${{ matrix.ort_plat }} app/src-tauri/resources/onnxruntime
 
       - name: 下载 PP-OCRv5 模型
         run: |

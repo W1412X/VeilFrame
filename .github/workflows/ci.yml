@@ -38,13 +38,6 @@ jobs:
         with:
           workspaces: "."
 
-      - name: 下载 ONNX Runtime（运行期动态加载）
-        run: |
-          curl -L --fail --retry 3 -o "$RUNNER_TEMP/ort.tgz" \
-            https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-x64-1.20.1.tgz
-          tar -xzf "$RUNNER_TEMP/ort.tgz" -C "$RUNNER_TEMP"
-          echo "ORT_DYLIB_PATH=$RUNNER_TEMP/onnxruntime-linux-x64-1.20.1/lib/libonnxruntime.so" >> "$GITHUB_ENV"
-
       - name: 运行测试
         run: cargo test --workspace --locked
 
