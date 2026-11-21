@@ -1,0 +1,2 @@
+ORT 原生库: onnxruntime.dll, onnxruntime_providers_shared.dll
+ORT 1.20.1 就绪: probe-out/onnxruntime.dll
