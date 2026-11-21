@@ -179,6 +179,7 @@ PP-OCRv5 的 Paddle 权重转 ONNX 失败：PoC 环境中的 `paddle2onnx` 1.3.1
   - OpenCV 用 vcpkg 静态 triplet（Linux/macOS 用 `ci/triplets/` 覆盖，Windows 用 `x64-windows-static-md`），二进制缓存放在 GitHub Actions cache。vcpkg 仓库钉在 `VCPKG_COMMIT`（当前 = opencv4 4.14.0）保证可复现；OpenCV 跨版本 API 差异（4.11 起 `cv::cvtColor` 多 `AlgorithmHint`）由 `vf-image`/`vf-render` 的 `build.rs` 探测版本后 cfg 分支兜底（逻辑在 `build/opencv_version.rs`，探测优先级 OPENCV_VERSION → vcpkg 的 opencv4.pc → pkg-config）。升级 `VCPKG_COMMIT` 前先跑 probe 分支的全链路探针暴露新漂移。
   - ONNX Runtime 用 `scripts/ci/fetch-ort.sh` 从 NuGet 官方包按平台解原生库（GitHub release 上 v1.20.1 的预编译资产不存在）；ffmpeg/ffprobe 用 npm 静态包；模型从 Hugging Face 下载，失败回退 hf-mirror；字典已入库，不需要现场生成。
   - tag 触发时通过 `softprops/action-gh-release` 上传安装包；普通手动触发只上传 artifact。
+  - Windows 构建前 `choco install llvm --force` 并设 `LIBCLANG_PATH`：MSVC 14.52 的 STL 头要求 Clang ≥ 22（`error STL1000`），镜像自带的 libclang 不一定够新。
   - 首次运行会编译 OpenCV，耗时长；之后命中缓存。
 
 ---
