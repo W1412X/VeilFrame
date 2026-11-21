@@ -79,7 +79,7 @@ jobs:
 
       - name: 安装 macOS 构建工具
         if: runner.os == 'macOS'
-        run: brew install cmake ninja pkg-config
+        run: brew install cmake ninja pkg-config autoconf automake libtool
 
       - uses: dtolnay/rust-toolchain@stable
 
