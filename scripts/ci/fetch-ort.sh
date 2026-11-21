@@ -16,7 +16,9 @@ case "$plat" in
 esac
 
 mkdir -p "$dest"
-tmp="$(mktemp -d)"
+# 用工作目录内的相对临时目录：/tmp 这类 POSIX 绝对路径传给 Windows 原生
+# Python 会被解析成当前盘符根目录，找不到文件。
+tmp="$(mktemp -d ./ort-dl.XXXXXX)"
 trap 'rm -rf "$tmp"' EXIT
 
 # --retry-all-errors 覆盖瞬断（连接重置/SSL 中断），这类错误默认不会被 --retry 重试。
