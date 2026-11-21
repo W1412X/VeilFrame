@@ -22,11 +22,28 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(opencv_ge411)");
 
     let (major, minor) = detect().unwrap_or_else(|| {
+        let vcpkg_root = env::var("VCPKG_ROOT").unwrap_or_else(|_| "(未设置)".into());
+        let triplet = env::var("VCPKGRS_TRIPLET").unwrap_or_else(|_| "(未设置)".into());
+        let pc = PathBuf::from(&vcpkg_root)
+            .join("installed")
+            .join(&triplet)
+            .join("lib/pkgconfig/opencv4.pc");
+        let pkg_config_ok = std::process::Command::new("pkg-config")
+            .args(["--modversion", "opencv4"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
         panic!(
-            "探测不到 OpenCV 版本：设置 OPENCV_VERSION=4.x.y，\n\
-             或设置 OPENCV_INCLUDE_PATHS 指向含 opencv2/core/version.hpp 的头文件目录，\n\
-             或设置 VCPKG_ROOT（可选 VCPKGRS_TRIPLET）指向 vcpkg 安装树，\n\
-             或让 pkg-config 能找到 opencv4.pc"
+            "探测不到 OpenCV 版本。\n\
+             \x20 VCPKG_ROOT={vcpkg_root}\n\
+             \x20 VCPKGRS_TRIPLET={triplet}\n\
+             \x20 候选 pc={}（存在={}）\n\
+             \x20 OPENCV_INCLUDE_PATHS={}\n\
+             \x20 pkg-config opencv4 可用={pkg_config_ok}\n\
+             \x20 请设置 OPENCV_VERSION=4.x.y 或修正上述任一路径",
+            pc.display(),
+            pc.exists(),
+            env::var("OPENCV_INCLUDE_PATHS").unwrap_or_else(|_| "(未设置)".into()),
         )
     });
 
