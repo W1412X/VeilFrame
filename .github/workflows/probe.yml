@@ -290,7 +290,7 @@ jobs:
                 # msys2-runtime-3.5.4-2 已被所有正牌镜像清除：URL 换到保留
                 # 历史版本的 NJU 镜像，条目改用仍存在的 3.5.7-4 并同步 SHA512。
                 f="$VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake"
-                curl -sfL --retry 3 -o "$RUNNER_TEMP/msysrt.pkg.tar.zst"                   "https://mirror.nju.edu.cn/msys2/msys/x86_64/msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst"
+                curl -sfL --retry 3 -o "$RUNNER_TEMP/msysrt.pkg.tar.zst" "https://mirror.nju.edu.cn/msys2/msys/x86_64/msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst"
                 newsha=$(sha512sum "$RUNNER_TEMP/msysrt.pkg.tar.zst" | cut -d' ' -f1)
                 sed -i                   -e 's|https://mirror.msys2.org/msys/|https://mirror.nju.edu.cn/msys2/msys/|g'                   -e 's|https://mirror.msys2.org/mingw/|https://mirror.nju.edu.cn/msys2/mingw/|g'                   -e 's|msys2-runtime-3.5.4-2-x86_64.pkg.tar.zst|msys2-runtime-3.5.7-4-x86_64.pkg.tar.zst|g'                   -e "s|070aeb43385beb0e3f8d5fb28909469765116c222d53c2614f5f080be879eef0b78258334b35e8cda7625d8704efc89133f8b8fa78f309c5d680ae270efdaba8|$newsha|"                   "$f"
               fi
