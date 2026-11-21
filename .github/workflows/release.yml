@@ -56,9 +56,10 @@ jobs:
       VCPKGRS_TRIPLET: ${{ matrix.triplet }}
       VCPKGRS_DYNAMIC: "0"
       OPENCV_MSVC_CRT: md
-      # 钉在 opencv4=4.10.0 的最后一个 vcpkg commit（4.11 起 cvt_color 多了
-      # AlgorithmHint 参数，与本地 OpenCV 4.10、CI apt 4.5.4 的绑定不兼容）。
-      VCPKG_COMMIT: 9b75e789ece3f942159b8500584e35aafe3979ff
+      # 钉住 vcpkg 版本保证可复现（当前 commit 的 opencv4 = 4.14.0）。
+      # cvt_color 的跨版本差异由 build/opencv_version.rs 的 cfg 分支兜底；
+      # 升级 VCPKG_COMMIT 前先跑 probe 分支的全链路探针暴露新漂移。
+      VCPKG_COMMIT: 9967a8eb5f4f5cd7be2b6717d31ddb7ff84c4751
 
     steps:
       - uses: actions/checkout@v4

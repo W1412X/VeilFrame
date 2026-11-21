@@ -61,6 +61,16 @@ pub fn rgb_from_mat(mat: &core::Mat) -> opencv::Result<Vec<u8>> {
 pub fn gray_from_rgb(width: usize, height: usize, rgb: &[u8]) -> opencv::Result<core::Mat> {
     let src = mat_from_rgb(width, height, rgb)?;
     let mut gray = core::Mat::default();
+    // OpenCV 4.11 起 cvtColor 多一个 AlgorithmHint 参数，见 build/opencv_version.rs。
+    #[cfg(opencv_ge411)]
+    imgproc::cvt_color(
+        &src,
+        &mut gray,
+        imgproc::COLOR_RGB2GRAY,
+        0,
+        core::AlgorithmHint::ALGO_HINT_DEFAULT,
+    )?;
+    #[cfg(not(opencv_ge411))]
     imgproc::cvt_color(&src, &mut gray, imgproc::COLOR_RGB2GRAY, 0)?;
     Ok(gray)
 }
