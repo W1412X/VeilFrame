@@ -1,6 +1,6 @@
 # VeilFrame 交接文档
 
-更新日期：2026-11-21
+更新日期：2026-11-22
 
 本文档面向接手的人。读完后应当能够：知道项目做到哪一步、怎么跑起来、哪些地方是坑、下一步该做什么。
 
@@ -29,9 +29,9 @@
 | 扫描流水线 | 完成并接入界面 | 抽帧 → OCR/模板匹配 → 感知缓存 → 时序融合 → 段；代理分辨率扫描，坐标回映射。 |
 | 导出 | 完成并接入界面 | ffmpeg 解码 → 打码 → 编码，全量重编码，音频 copy。 |
 | 前端（React + TS + Vite） | 完成并接入真实后端 | 类型检查、单元测试、打包均通过。编辑器、批量队列、导出/新建目标对话框全部调用 Tauri 命令。 |
-| Tauri 外壳 | 代码完成，**未在本地编译过** | 见第 8 节第 1 条。首次真实编译由 GitHub Actions 完成。 |
+| Tauri 外壳 | **CI 编译打包成功** | v0.1.0 三平台产物已产出；本地仍不编译（约定），改动靠 CI/probe 验证。 |
 | 端到端流程 | 核心链路已用合成视频跑通 | 打开视频 → 建目标 → 扫描 → 复核 → 导出有测试覆盖；真机界面仍待验证。 |
-| CI/CD | 工作流已写好 | `.github/workflows/ci.yml` 跑测试；`.github/workflows/release.yml` 构建三平台安装包。首次运行还需要盯一次。 |
+| CI/CD | **全链路已验证** | CI（apt4.5.4 测试 + 前端）多次全绿；Release 三平台构建 + 打包 + 上传 Release 全部成功（见11 节）。诊断用 `probe` 分支（见6.3）。 |
 
 ---
 
@@ -180,6 +180,7 @@ PP-OCRv5 的 Paddle 权重转 ONNX 失败：PoC 环境中的 `paddle2onnx` 1.3.1
   - `opencv` crate 钉在 **0.102**（8 处 Cargo.toml）：0.93~0.95 在 Windows 新 clang（MSVC14.52 STL 要求 ≥22，且必须开 `clang-runtime`）下生成的绑定会缺 GpuMat/UMat/Mat 构造等大段内容，0.96 起才有 “clang-21 on Windows” 修复链（issue #628/#693），0.102 为最新含全部修复。**不要回退到0.93**；本地4.10 与 CI apt4.5.4 均已用0.102 全量测试通过。
   - 钉住的 vcpkg 树里 `vcpkg_acquire_msys.cmake` 引用的 `msys2-runtime-3.5.4-2` 已被所有镜像清除：该脚本的 URL 正则只认 `mirror.msys2.org`，Windows 步骤先用 sed 把正则前缀裁成 `^https://`（只裁前缀、不加捕获组，`CMAKE_MATCH` 序号不变），再把 runtime 条目指向 NJU 镜像仍保留的 `3.5.7-4` 并同步 SHA512；三步 sed 后都有 grep 断言，不生效即 FATAL。注意 vcpkg 下载缓存走内部 `${DOWNLOADS}` 变量，预置 `downloads/` 目录的方案实测无效，不要回退。
   - `tauri build` 前先 `rm -rf target/*/build/opencv-*`（及 vf-image/vf-render）：rust-cache 会带上一版本 OpenCV 生成的绑定，强制重建保证绑定与 cfg 同源（否则会出现「cfg 判 4.14、绑定却是4参」这类错配）。
+  - **诊断套路（probe 分支）**：`.github/workflows/probe.yml` 只在 `probe` 分支触发，三个 job 把 vcpkg/npm/build 日志（含 `-vv` 的生成输出、types.rs 条目检查）提交到 `probe-log-*` 分支——Actions 日志 API 需要仓库管理员权限，直接 `git fetch` 日志分支即可读。用法：改动合进 probe 推送即跑；三平台全绿再动 main/打 tag。踩过的坑（sed 转义层数、锚点必须限定 job、`|| echo` 会掩盖退出码、Python heredoc 吃掉行尾反斜杠）都因此被 YAML 校验和断言当场拦下过。
   - ONNX Runtime 用 `scripts/ci/fetch-ort.sh` 从 NuGet 官方包按平台解原生库（GitHub release 上 v1.20.1 的预编译资产不存在）；ffmpeg/ffprobe 用 npm 静态包；模型从 Hugging Face 下载，失败回退 hf-mirror；字典已入库，不需要现场生成。
   - tag 触发时通过 `softprops/action-gh-release` 上传安装包；普通手动触发只上传 artifact。
   - Windows 构建前 `choco upgrade llvm --force` 并设 `LIBCLANG_PATH`：MSVC 14.52 的 STL 头要求 Clang ≥ 22（`error STL1000`），镜像自带的 libclang 不一定够新；注意 `choco install --force` 只会重装已装的旧版本，必须用 `upgrade` 才会升到 feed 最新版。
@@ -205,8 +206,8 @@ OCR 选 PP-OCRv5（用户确认），不用 v4。
 
 ## 8. 已知问题与坑
 
-1. **Tauri 外壳没有本地编译过**。WSL 22.04 缺 `libdbus-1-dev`，而用户要求不要改系统配置。`app/src-tauri` 的代码经过人工审查（类型、Tauri API、线程 Send/Sync），但第一次真实编译在 CI。预期可能出现的问题：Tauri 配置字段、命令参数名、资源路径。
-2. **Release 工作流首次运行是未知数**。vcpkg 静态 OpenCV 的 triplet、编译时长、链接依赖、静态 ffmpeg 包在 macOS arm64 上的可用性都还没有实跑。第一次失败要按日志修，不要假设缓存已经正确。
+1. **Tauri 外壳已由 CI 编译打包成功**（v0.1.0，2026-11-22），但本地仍不编译（用户约定）。改 `app/src-tauri` 后必须靠 CI 或 probe 分支验证。
+2. **Release 已跑通三平台**：`VeilFrame_0.1.0_x64-setup.exe`、`_amd64.deb`、`_amd64.AppImage`、`_aarch64.dmg` 四个产物已上传 GitHub Release。首次排障沉淀的坑全部记录在6.3（msys2 镜像、LLVM、opencv crate 版本等）。
 3. **macOS 包未签名**。用户第一次打开可能需要右键 → 打开，或在系统设置里允许。
 4. **批量队列是内存态**：重启丢失；单工作线程；重新排队整段重扫；不自动导出（ADR-0009）。
 5. **OCR 只做了检测加识别**。方向分类（cls）没有接入，竖排文字靠裁剪后旋转处理。识别是逐行推理（batch 1），整帧 1080p 的速度没有测过。
@@ -248,11 +249,10 @@ OCR 选 PP-OCRv5（用户确认），不用 v4。
 
 ## 11. 下一步（按优先级）
 
-1. **盯一次 Release 工作流**：修首次编译/打包错误，确认三平台产物可用。这是唯一还没验证的大块。
-2. **真机跑通完整流程**：在 Windows 安装包里打开视频、建目标、扫描、复核、导出，检查预览、进度、取消、批量队列的实际体验。
-3. **校准阈值与性能**：准备 5 段左右带标注的代表性视频，记录检出率、误检率、倍速（ADR-0007），再定默认参数。
-4. **OS 级体验**：确认 macOS 未签名包的打开方式，必要时加签名/公证；Linux AppImage 在无 OpenCV 系统上的启动测试。
-5. **按需再做**：队列持久化、断点续扫、批量自动导出、智能渲染（ADR-0005/0009）。
+1. **真机跑通完整流程**：在 Windows 安装包（`VeilFrame_0.1.0_x64-setup.exe`）里打开视频、建目标、扫描、复核、导出，检查预览、进度、取消、批量队列的实际体验。
+2. **校准阈值与性能**：准备 5 段左右带标注的代表性视频，记录检出率、误检率、倍速（ADR-0007），再定默认参数。
+3. **OS 级体验**：确认 macOS 未签名包的打开方式，必要时加签名/公证；Linux AppImage 在无 OpenCV 系统上的启动测试。
+4. **按需再做**：队列持久化、断点续扫、批量自动导出、智能渲染（ADR-0005/0009）。
 
 ---
 
