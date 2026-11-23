@@ -621,6 +621,7 @@ export function App() {
           <Timeline
             project={project}
             time={time}
+            playing={playing}
             selSeg={selSeg}
             selTarget={selTarget}
             onlyPending={onlyPending}
@@ -628,6 +629,8 @@ export function App() {
             onSeek={seek}
             onSelectSeg={selectSegment}
             onSelectTarget={selectTarget}
+            onAccept={onAccept}
+            onReject={onReject}
           />
         </>
       )}

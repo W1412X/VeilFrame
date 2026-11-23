@@ -3,247 +3,161 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VeilFrame · 底部时间轴与播放控制栏 交互优化预览</title>
+<title>VeilFrame · 底部时间轴 预览（与应用一致）</title>
+<!-- 直接引用应用的样式，保证外观与 app 一致 -->
+<link rel="stylesheet" href="../../app/src/styles.css">
+<link rel="stylesheet" href="../../app/src/styles-extra.css">
 <style>
-  :root {
-    --bg: #eef0f3; --card: #ffffff; --line: #e1e5eb; --ink: #1d2330; --sub: #5b6472; --mute: #8b919b;
-    --acc: #2f5bd3; --acc-soft: #e8eefc; --warn: #b96a00; --rail: #f6f7f9;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 13px/1.45 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  /* 页面外壳样式（仅用于预览页本身） */
+  html, body { height: auto; }
+  body { overflow: auto; }
   .page { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
-  h1 { font-size: 20px; margin: 0 0 6px; }
+  .page h1 { font-size: 20px; margin: 0 0 6px; }
   .lead { color: var(--sub); margin: 0 0 16px; max-width: 920px; }
-  .editor { background: #1b1e25; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 24px rgba(0,0,0,.18); }
-
-  /* 画面区（示意） */
-  .stage { height: 330px; display: flex; align-items: center; justify-content: center; color: #aab1bd; position: relative;
-    background: radial-gradient(120% 90% at 30% 20%, #2c3644, #1d2027 70%); }
-  .stage .mock-box { position: absolute; left: 28%; top: 30%; width: 14%; height: 12%; border: 2px dashed #e09f3e; border-radius: 3px;
-    background: repeating-linear-gradient(45deg, #5b6472 0 6px, #7d828c 6px 12px); }
-  .stage .mock-box2 { position: absolute; left: 58%; top: 56%; width: 10%; height: 9%; border: 2px solid #2a9d8f; border-radius: 3px;
-    background: linear-gradient(135deg, #cfd6e0, #9aa3b1); }
-  .stage .caption { position: absolute; left: 14px; top: 12px; font-size: 12px; color: #8b919b; }
-
-  /* 底部控制栏 */
-  .bar { background: var(--card); color: var(--ink); border-top: 1px solid var(--line); }
-  button, select { font: inherit; color: inherit; }
-  button { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 4px 9px; cursor: pointer; min-height: 28px; }
-  button:hover { background: #f3f5f8; }
-  button:focus-visible, select:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
-  button.primary { background: var(--acc); border-color: var(--acc); color: #fff; min-width: 40px; }
-  button.primary:hover { background: #2549b4; }
-  button.on { background: var(--acc-soft); border-color: #b9c8f2; color: var(--acc); font-weight: 600; }
-  button.ghost { border-color: transparent; background: transparent; }
-  button.ghost:hover { background: #eef1f5; }
-  kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: #f1f3f6; border: 1px solid #d8dde5; border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; color: var(--sub); }
-
-  .transport { display: flex; align-items: center; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
-  .time { font-variant-numeric: tabular-nums; font-size: 14px; min-width: 176px; margin-left: 4px; }
-  .time b { font-weight: 600; }
-  .time span { color: var(--sub); }
-  .sp { flex: 1; }
-  .zoom { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
-  .zoom button { border: 0; min-width: 30px; }
-  .zoom .zl { min-width: 128px; text-align: center; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
-  .toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--sub); cursor: pointer; user-select: none; }
-
-  .selbar { display: flex; align-items: center; gap: 10px; padding: 7px 14px; border-top: 1px solid var(--line); background: var(--rail); min-height: 42px; flex-wrap: wrap; }
-  .selbar .muted { color: var(--mute); }
-  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
-  .badge.pending { color: #2f5bd3; } .badge.low { color: #b96a00; } .badge.confirmed { color: #2a7d4f; border-style: solid; background: #e6f4ec; }
-
-  /* 时间轴：一个滚动容器同时承担横向滚动与纵向滚动 */
-  .tl-wrap { position: relative; }
-  .tl { position: relative; overflow: auto; height: 236px; background: #fff; outline: none; }
-  .tl:focus-visible { box-shadow: inset 0 0 0 2px var(--acc); }
-  .wrap { position: relative; }
-  .row { display: flex; height: 34px; border-bottom: 1px solid #eef0f3; }
-  .ruler-row { height: 28px; position: sticky; top: 0; z-index: 4; background: #fafbfc; border-bottom: 1px solid var(--line); }
-  .lab { position: sticky; left: 0; z-index: 3; width: 140px; flex: none; background: #fff; display: flex; align-items: center; gap: 7px;
-    padding: 0 10px; border-right: 1px solid var(--line); cursor: pointer; white-space: nowrap; overflow: hidden; }
-  .lab small { color: var(--mute); font-size: 11px; }
-  .lab.sel { background: var(--acc-soft); }
-  .lab.off { opacity: .45; }
-  .ruler-row .lab { background: #fafbfc; cursor: default; color: var(--sub); font-size: 12px; }
-  .trk { position: relative; flex: none; }
-  .ruler { cursor: ew-resize; height: 28px; }
-  .trk.lane { cursor: default; }
-  .tick { position: absolute; top: 0; height: 28px; border-left: 1px solid #b9bfc9; font-size: 10px; color: var(--sub); padding-left: 6px; line-height: 12px; padding-top: 2px; pointer-events: none; font-variant-numeric: tabular-nums; }
-  .tick.minor { height: 7px; top: 21px; padding: 0; border-color: #d3d8e0; }
-  .blk { position: absolute; top: 6px; height: 22px; border-radius: 5px; cursor: pointer; box-sizing: border-box; font-size: 11px; line-height: 20px;
-    padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; background: var(--c); border: 1px solid var(--c); user-select: none; }
-  .blk.st-pending { background: color-mix(in srgb, var(--c) 18%, #fff); color: var(--ink); border: 1.5px dashed var(--c); }
-  .blk.st-low { color: var(--ink); background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--c) 35%, #fff) 0 4px, #fff 4px 8px); border: 1px solid var(--c); }
-  .blk.st-confirmed { background: var(--c); }
-  .blk.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 2; }
-  .blk:hover { filter: brightness(.96); }
-
-  #ph { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--acc); pointer-events: none; z-index: 5; }
-  #ph .knob { position: absolute; top: 0; left: -9px; width: 18px; height: 22px; pointer-events: auto; cursor: ew-resize; }
-  #ph .knob::after { content: ""; position: absolute; left: 0; top: 0; width: 18px; height: 20px; background: var(--acc);
-    clip-path: polygon(0 0, 100% 0, 100% 66%, 50% 100%, 0 66%); }
-  #ph.dragging .knob::after { background: #1d3f9e; }
-  #guide { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(47,91,211,.55); pointer-events: none; z-index: 4; display: none; }
-  #tip { position: absolute; top: 4px; transform: translateX(-50%); background: #1d2330; color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 4px;
-    pointer-events: none; z-index: 6; display: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  #tip.ph-tip { background: var(--acc); }
-  .float-back { position: absolute; right: 12px; top: 34px; z-index: 7; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); background: #fff; }
-
-  /* 总览条：整段视频 + 当前视口 */
-  .ov-row { display: flex; align-items: stretch; background: var(--rail); border-top: 1px solid var(--line); }
-  .ov-spacer { width: 140px; flex: none; font-size: 11px; color: var(--mute); display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); }
-  .ov { position: relative; flex: 1; height: 26px; cursor: pointer; }
-  .ovseg { position: absolute; top: 7px; height: 12px; border-radius: 2px; opacity: .55; pointer-events: none; }
-  .vp { position: absolute; top: 2px; bottom: 2px; background: rgba(47,91,211,.13); border: 1.5px solid var(--acc); border-radius: 4px; cursor: grab; min-width: 14px; }
-  .vp:active { cursor: grabbing; }
-  .edge { position: absolute; top: -2px; bottom: -2px; width: 10px; background: var(--acc); cursor: ew-resize; border-radius: 3px; }
-  .edge.l { left: -6px; } .edge.r { right: -6px; }
-  .edge::after { content: ""; position: absolute; left: 3px; top: 35%; width: 2px; height: 30%; background: #fff; border-radius: 1px; }
-
-  /* 键位与提示 */
-  .keys { display: flex; gap: 14px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12px; align-items: center; }
-  .keys span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-  .toast { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: #1d2330; color: #fff; padding: 6px 12px; border-radius: 6px;
-    font-size: 12px; display: none; pointer-events: none; z-index: 9; }
-
-  /* 说明 */
-  .notes { margin-top: 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .editor { height: 640px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--card); box-shadow: 0 6px 24px rgba(0,0,0,.08); }
+  .editor .frame { height: 100%; width: auto; max-width: 100%; aspect-ratio: 16 / 9; }
+  .notes { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
   .card h2 { font-size: 15px; margin: 0 0 10px; }
-  .card ol, .card ul { margin: 0; padding-left: 20px; }
+  .card ul, .card ol { margin: 0; padding-left: 20px; }
   .card li { margin: 0 0 8px; }
-  .card .k { color: var(--warn); font-weight: 600; }
+  .card .k { color: #a86500; font-weight: 600; }
   .wide { grid-column: 1 / -1; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid #eef0f3; }
-  th { color: var(--sub); font-weight: 600; background: #f7f8fa; }
+  .wide table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .wide th, .wide td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid #eef0f3; }
+  .wide th { color: var(--sub); font-weight: 600; background: #f7f8fa; }
+  kbd { font: 11px/1 ui-monospace, Consolas, monospace; background: #f1f3f6; border: 1px solid #d8dde5; border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; color: var(--sub); }
   @media (max-width: 900px) { .notes { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <div class="page">
-  <h1>底部时间轴与播放控制栏 · 交互优化预览</h1>
+  <h1>底部时间轴 · 预览（与应用实现一致）</h1>
   <p class="lead">
-    下面是编辑器底部区域的示意（画面区仅为占位）。可以直接操作：拖动标尺或播放头，Ctrl+滚轮缩放，Shift+滚轮横向滚动，
-    拖动总览条的视口本体平移或拖动两端改缩放，单击段选中、双击段放大到该段，并用键盘 Space、←→、F、Enter、Delete、Ctrl+Z 完成复核。
+    这里的结构、类名和交互逻辑对应 <code>app/src/components/Timeline.tsx</code>，样式引用 <code>app/src/styles.css</code> 与 <code>styles-extra.css</code>，
+    布局与应用的主界面相同。画面、侧栏、检查器是占位，段和目标是随机生成的示意数据（视频 600 秒，4 个目标）。
   </p>
 
-  <div class="editor" id="editor">
-    <div class="stage">
-      <div class="caption">画面预览（示意）</div>
-      <div class="mock-box"></div>
-      <div class="mock-box2"></div>
-    </div>
-
-    <section class="bar">
-      <!-- 第一行：播放与视图控制 -->
-      <div class="transport">
-        <button id="btnStart" title="回到开头 (Home)">⏮</button>
-        <button id="btnPrev" title="上一帧 (←)">◀</button>
-        <button id="btnPlay" class="primary" title="播放 / 暂停 (Space)">▶</button>
-        <button id="btnNext" title="下一帧 (→)">▶</button>
-        <div class="time" id="timeText"></div>
-        <select id="speed" title="播放倍速">
-          <option value="0.5">0.5×</option>
-          <option value="1" selected>1×</option>
-          <option value="2">2×</option>
-          <option value="4">4×</option>
-        </select>
+  <div class="editor">
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">VeilFrame</div>
+        <div class="path">bench.mp4</div>
         <span class="sp"></span>
-        <div class="zoom" title="缩放时间轴：Ctrl+滚轮 或 按钮">
-          <button id="zOut" class="ghost" title="缩小 (−)">−</button>
-          <span class="zl" id="zLabel">全片</span>
-          <button id="zIn" class="ghost" title="放大 (+)">＋</button>
-          <button id="zFit" title="适应全部 (0)">适应</button>
-        </div>
-        <label class="toggle" title="播放时视口跟随播放头；手动滚动后自动暂停">
-          <input type="checkbox" id="follow" checked> 跟随播放
-        </label>
-        <button id="btnPending" title="只显示待确认与低置信段">只看待确认 <span id="pendCount"></span></button>
-        <button id="btnNextPending" title="下一待确认 (F)">下一待确认 <kbd>F</kbd></button>
+        <span class="muted small">示意页</span>
+      </header>
+
+      <div class="body">
+        <aside class="sidebar">
+          <div class="sec-row"><div class="sec">目标（示意）</div></div>
+          <div class="tg"><span class="dot" style="background:#d1495b"></span><div class="name">手机号</div></div>
+          <div class="tg"><span class="dot" style="background:#2a9d8f"></span><div class="name">台标</div></div>
+          <div class="tg"><span class="dot" style="background:#8e6bbf"></span><div class="name">身份证号</div></div>
+          <div class="tg"><span class="dot" style="background:#e09f3e"></span><div class="name">车牌（已停用）</div></div>
+        </aside>
+
+        <section class="center">
+          <div class="stage">
+            <div class="frame"><div class="stage-empty">画面预览（示意）<small>应用中为视频帧与打码效果</small></div></div>
+            <div class="orig-badge" id="origBadge" style="display:none">原画对比中 · \ 切换回</div>
+          </div>
+          <div class="transport">
+            <button class="icon-btn" id="trStart" title="回到开头">⏮</button>
+            <button class="icon-btn" id="trPrev" title="上一帧 (←)">‹</button>
+            <button class="icon-btn primary" id="trPlay" title="播放 (Space)">▶</button>
+            <button class="icon-btn" id="trNext" title="下一帧 (→)">›</button>
+            <span class="time" id="trTime"></span>
+            <span class="sp"></span>
+            <button id="trCompare" title="切换原画 (\)">对比原画 \</button>
+            <span class="muted small" id="trPending"></span>
+          </div>
+        </section>
+
+        <aside class="sidebar" style="border-right:0;border-left:1px solid var(--line)">
+          <div class="sec">检查器（示意，略）</div>
+        </aside>
       </div>
 
-      <!-- 第二行：选中段的信息与就地操作 -->
-      <div class="selbar" id="selbar"></div>
+      <!-- 以下结构与 Timeline.tsx 的渲染结果一致 -->
+      <section class="timeline">
+        <div class="tl-head">
+          <b>时间轴</b>
+          <span class="muted small" id="tlHeadTime"></span>
+          <span class="sp"></span>
+          <div class="tl-zoom" title="缩放：Ctrl+滚轮 或 按钮">
+            <button class="ghost" id="tlZoomOut" title="缩小">−</button>
+            <span class="zl" id="tlZoomLabel"></span>
+            <button class="ghost" id="tlZoomIn" title="放大">＋</button>
+            <button id="tlFit" title="适应全部">适应</button>
+          </div>
+          <label class="toggle" title="播放时视口跟随播放头；手动滚动后暂停"><input type="checkbox" id="tlFollow" checked> 跟随播放</label>
+          <button id="tlPending">只看待确认</button>
+          <button id="tlNext" title="下一待确认 (F)">下一待确认 <kbd>F</kbd></button>
+        </div>
 
-      <!-- 第三行：时间轴（标尺 + 轨道） -->
-      <div class="tl-wrap">
-        <div class="tl" id="scroller" tabindex="0">
-          <div class="wrap" id="wrap">
-            <div class="row ruler-row" id="rulerRow">
-              <div class="lab">时间（秒）</div>
-              <div class="trk ruler" id="ruler"></div>
-            </div>
+        <div class="tl-sel" id="tlSel"></div>
+
+        <div class="tl-scroll" id="tlScroll">
+          <div class="tl-wrap" id="tlWrap">
+            <div id="tlRows"></div>
+            <div class="tl-ph" id="tlPh"><div class="tl-knob"></div></div>
+            <div class="tl-guide" id="tlGuide" style="display:none"></div>
+            <div class="tl-tip" id="tlTip" style="display:none"></div>
           </div>
         </div>
-        <button class="float-back" id="btnBack" title="把播放头放回可视区域">回到播放头 ⤴</button>
-        <div class="toast" id="toast"></div>
-      </div>
 
-      <!-- 第四行：总览条 -->
-      <div class="ov-row">
-        <div class="ov-spacer">整段总览</div>
-        <div class="ov" id="ov"><div class="vp" id="vp"><i class="edge l" data-edge="l"></i><i class="edge r" data-edge="r"></i></div></div>
-      </div>
+        <button class="tl-back" id="tlBack" style="display:none">回到播放头 ⤴</button>
 
-      <!-- 第五行：快捷键常驻 -->
-      <div class="keys">
-        <span><kbd>Space</kbd> 播放 / 暂停</span>
-        <span><kbd>←</kbd><kbd>→</kbd> 逐帧（<kbd>Shift</kbd> 逐秒）</span>
-        <span><kbd>Ctrl</kbd> + 滚轮 缩放</span>
-        <span><kbd>Shift</kbd> + 滚轮 横向滚动</span>
-        <span><kbd>F</kbd> 下一待确认</span>
-        <span><kbd>Enter</kbd> 接受</span>
-        <span><kbd>Delete</kbd> 否决</span>
-        <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销</span>
-        <span><kbd>0</kbd> 适应全部</span>
-      </div>
-    </section>
+        <div class="tl-ov-row">
+          <div class="tl-ov-sp">整段总览</div>
+          <div class="tl-ov" id="tlOv"></div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <section class="notes">
     <div class="card">
-      <h2>现有问题（对应当前 Timeline.tsx）</h2>
-      <ol>
-        <li><span class="k">播放头不能拖。</span> 只有 <code>pointerdown</code> 会跳转，播放头线没有把手，也没有拖动逻辑。用户去拖那条线，没有反应。</li>
-        <li><span class="k">没有缩放与滚动。</span> 整段视频压在一屏里，10 分钟视频每秒约 1.6 px，段很难点中，最小宽度只有 0.4%。</li>
-        <li><span class="k">没有时间刻度。</span> 只能看到顶部文字"播放头 12.3s"，无法判断位置在整段中的哪里。</li>
-        <li><span class="k">播放时视图不跟随。</span> 加上缩放后，播放头会离开可视区域。</li>
-        <li><span class="k">悬停没有反馈。</span> 不知道点下去会跳到哪一秒。</li>
-        <li><span class="k">光标不表达功能。</span> 标尺、播放头、段块、空白轨道都是默认箭头，看不出哪里能拖、哪里能点。</li>
-        <li><span class="k">段的操作离开了时间轴。</span> 选中段后只能去检查器或记快捷键。</li>
-      </ol>
+      <h2>交互（与 Timeline.tsx 一致）</h2>
+      <ul>
+        <li>标尺或轨道空白处按下即定位，拖动时持续定位。播放头顶部的把手也可以拖动。</li>
+        <li>鼠标在标尺或轨道上悬停时，显示虚线参考线和对应时间。</li>
+        <li>单击段：选中并跳到段首。双击段：放大到该段。</li>
+        <li>Ctrl/⌘ + 滚轮：以鼠标位置为中心缩放。Shift + 滚轮：横向滚动。</li>
+        <li>缩放按钮以播放头为中心缩放；「适应」回到全片。</li>
+        <li>播放时视口跟随播放头。手动滚动后暂停跟随，播放头移出视野时出现「回到播放头」。</li>
+        <li>总览条：拖动蓝框平移，拖动两端改变缩放，点击其他位置跳转。</li>
+        <li>「只看待确认」只显示待确认和低置信段。「下一待确认」跳到下一段。</li>
+        <li>选中段后，信息条显示范围、状态和置信度，可以接受、否决或放大到该段。</li>
+      </ul>
     </div>
 
     <div class="card">
-      <h2>优化方案</h2>
-      <ol>
-        <li><b>标尺与播放头把手是唯一的拖动入口。</b> 光标为 <code>ew-resize</code>，按下即擦洗，拖动时显示时间气泡。轨道空白处的按下也会跳转，段块的点击只做选中。</li>
-        <li><b>缩放与滚动显式化。</b> Ctrl+滚轮以鼠标位置为中心缩放；Shift+滚轮或触控板横向滚动；原生滚动条常驻。</li>
-        <li><b>总览条。</b> 显示整段视频与当前视口。拖动视口本体平移，拖动两端改缩放，点击其他位置跳到那里。</li>
-        <li><b>倍率与可见范围可读。</b> 缩放按钮旁显示"×倍率 · N 秒可见"。</li>
-        <li><b>跟随播放与显式状态。</b> 播放时视口跟随。手动滚动后暂停跟随，并出现"回到播放头"按钮。</li>
-        <li><b>段操作就地化。</b> 选中段后底部信息条显示范围、状态，并提供接受、否决按钮和对应键位。双击段放大到该段。</li>
-        <li><b>悬停参考线与时间。</b> 鼠标移到轨道上显示虚线与时间，用户知道点下去会去哪里。</li>
-        <li><b>键位常驻。</b> 底部一行列出常用快捷键，不再依赖点击"?"后的短暂提示。</li>
-      </ol>
+      <h2>快捷键（App.tsx 处理）</h2>
+      <ul>
+        <li><kbd>Space</kbd> 播放 / 暂停</li>
+        <li><kbd>←</kbd> <kbd>→</kbd> 逐帧；<kbd>Shift</kbd> + <kbd>←</kbd> <kbd>→</kbd> 逐秒</li>
+        <li><kbd>F</kbd> 下一待确认段</li>
+        <li><kbd>Enter</kbd> 接受选中段；<kbd>Delete</kbd> / <kbd>Backspace</kbd> 否决选中段</li>
+        <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销，<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> 重做（本页只演示接受和否决的撤销）</li>
+        <li><kbd>\</kbd> 切换原画对比</li>
+        <li><span class="k">未实现：</span>+ / − / 0 缩放键，Home / End</li>
+      </ul>
     </div>
 
     <div class="card wide">
-      <h2>其他交互问题（按操作路径分析）</h2>
+      <h2>时间轴之外的建议（未实现）</h2>
       <table>
         <tr><th>路径 / 位置</th><th>问题</th><th>建议</th></tr>
         <tr>
           <td>扫描入口</td>
-          <td>"扫描此目标"在检查器里，"扫描全部"在侧栏，进度条悬浮在窗口底部，取消按钮藏在进度条里。</td>
+          <td>「扫描此目标」在检查器里，「扫描全部」在侧栏，进度条悬浮在窗口底部，取消按钮藏在进度条里。</td>
           <td>把进度与取消放进时间轴顶部同一位置，与扫描入口的状态保持一致。</td>
         </tr>
         <tr>
           <td>否决 → 负样本</td>
-          <td>"否决时记为负样本"默认勾选，藏在段面板里。它会全局上调该目标阈值，影响下一次扫描，用户不知道。</td>
-          <td>在否决按钮旁显示影响说明，例如"下次扫描阈值 0.60 → 0.61"。默认不勾选，或在首次否决时提示一次。</td>
+          <td>「否决时记为负样本」默认勾选，藏在段面板里。它会全局上调该目标阈值，影响下一次扫描，用户不知道。</td>
+          <td>在否决按钮旁显示影响说明，例如「下次扫描阈值 0.60 → 0.61」。默认不勾选，或在首次否决时提示一次。</td>
         </tr>
         <tr>
           <td>反馈消息</td>
@@ -252,23 +166,23 @@
         </tr>
         <tr>
           <td>关键帧拖动</td>
-          <td>只有选中段后才能拖四角，画面上没有提示"拖动 = 在当前时刻写入关键帧"，拖完也没有撤销提示。</td>
-          <td>拖动时显示"第 x 秒关键帧"，松手后给出可撤销的提示条。</td>
+          <td>只有选中段后才能拖四角，画面上没有提示「拖动 = 在当前时刻写入关键帧」，拖完也没有撤销提示。</td>
+          <td>拖动时显示「第 x 秒关键帧」，松手后给出可撤销的提示条。</td>
         </tr>
         <tr>
           <td>原画对比</td>
           <td>只能用 <kbd>\</kbd> 切换，底部栏没有对应按钮。</td>
-          <td>提供"按住看原画"（按住 <kbd>Tab</kbd> 或按住按钮），松开即恢复打码画面。</td>
+          <td>提供「按住看原画」（按住 <kbd>Tab</kbd> 或按住按钮），松开即恢复打码画面。</td>
         </tr>
         <tr>
           <td>导出</td>
-          <td>"待确认段也打码"默认开，用户可能在未复核时直接导出。</td>
-          <td>导出前显示"将打码 N 段，其中待确认 M 段"，并在对话框里高亮未复核数量。</td>
+          <td>「待确认段也打码」默认开，用户可能在未复核时直接导出。</td>
+          <td>导出前显示「将打码 N 段，其中待确认 M 段」，并在对话框里高亮未复核数量。</td>
         </tr>
         <tr>
           <td>批量队列</td>
           <td>切换到队列视图后，编辑器的上下文（当前时刻、选中段）丢失。</td>
-          <td>切换时保留当前项目的时间与选中状态，队列里已复核的任务标注"已复核"。</td>
+          <td>切换时保留当前项目的时间与选中状态，队列里已复核的任务标注「已复核」。</td>
         </tr>
       </table>
     </div>
@@ -277,16 +191,21 @@
 
 <script>
 (() => {
-  // ---------- 示意数据 ----------
-  const DUR = 600;            // 视频时长（秒），10 分钟，便于体现缩放
-  const LABEL_W = 140;        // 左侧标签列宽度（像素）
+  // ---------- 示意数据（与应用的数据结构对应：target / t0 / t1 / status / conf） ----------
+  const DUR = 600;                  // 视频时长（秒）
+  const FPS = 30;
+  const LABEL_W = 140;              // 左侧标签列宽度（像素），与 Timeline.tsx 相同
   const MIN_ZOOM = 1, MAX_ZOOM = 80;
+  const STEPS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+  const STATUS_LABEL = { confirmed: '已确认', pending: '待确认', low: '低置信', rejected: '已否决' };
+
   const TARGETS = [
     { id: 'phone', name: '手机号', color: '#d1495b', enabled: true },
     { id: 'logo', name: '台标', color: '#2a9d8f', enabled: true },
     { id: 'idcard', name: '身份证号', color: '#8e6bbf', enabled: true },
-    { id: 'plate', name: '车牌（停用）', color: '#e09f3e', enabled: false },
+    { id: 'plate', name: '车牌', color: '#e09f3e', enabled: false },
   ];
+
   let seed = 11;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const SEGS = [];
@@ -299,456 +218,472 @@
       const t1 = Math.min(DUR - 1, t0 + len);
       const r = rnd();
       const status = r < 0.42 ? 'pending' : r < 0.6 ? 'low' : r < 0.88 ? 'confirmed' : 'rejected';
-      SEGS.push({ id: `${tg.id}-${i}`, tg: tg.id, t0, t1, status, conf: +(0.55 + rnd() * 0.44).toFixed(2) });
+      SEGS.push({ id: `${tg.id}-${i}`, target: tg.id, t0, t1, status, conf: +(0.55 + rnd() * 0.44).toFixed(2) });
       cursor = t1 + 8 + rnd() * 40;
       i++;
     }
   });
-  const colorOf = (id) => TARGETS.find((t) => t.id === id).color;
-  const nameOf = (id) => TARGETS.find((t) => t.id === id).name;
-  const STATUS_LABEL = { pending: '待确认', low: '低置信', confirmed: '已确认', rejected: '已否决' };
 
-  // ---------- 状态 ----------
-  const S = {
-    t: 0, playing: false, speed: 1, zoom: 1, sel: null, selTarget: null,
-    onlyPending: false, follow: true, followPaused: false, scrubbing: false, lastProg: 0,
-  };
-  const undoStack = [];
+  // ---------- 与应用共用的纯函数（对应 domain/segments.ts） ----------
+  const pad2 = (n) => String(n).padStart(2, '0');
+  function formatTime(t) {
+    const m = Math.floor(t / 60);
+    const s = t - m * 60;
+    return `${pad2(m)}:${s.toFixed(2).padStart(5, '0')}`;
+  }
+  function nextPending(t) {
+    const list = SEGS.filter((s) => s.status === 'pending' || s.status === 'low').sort((a, b) => a.t0 - b.t0);
+    if (!list.length) return undefined;
+    return list.find((s) => s.t0 > t + 0.01) ?? list[0];
+  }
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const segById = (id) => SEGS.find((s) => s.id === id);
+  const targetById = (id) => TARGETS.find((t) => t.id === id);
+  const pendingCount = () => SEGS.filter((s) => s.status === 'pending' || s.status === 'low').length;
+
+  // 刻度标签，与 Timeline.tsx 的 ticks 一致
+  function tickLabel(s, step) {
+    const m = Math.floor(s / 60);
+    const sec = s - m * 60;
+    return step < 1 ? `${pad2(m)}:${sec.toFixed(1).padStart(4, '0')}` : `${pad2(m)}:${String(Math.round(sec)).padStart(2, '0')}`;
+  }
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
-  const scroller = $('scroller'), wrap = $('wrap'), ruler = $('ruler'), rulerRow = $('rulerRow');
-  const selbar = $('selbar'), ov = $('ov'), vp = $('vp'), btnBack = $('btnBack'), toastEl = $('toast');
-  const timeText = $('timeText'), zLabel = $('zLabel'), btnPlay = $('btnPlay'), pendCount = $('pendCount');
-  const ph = document.createElement('div'); ph.id = 'ph';
-  const knob = document.createElement('div'); knob.className = 'knob'; ph.appendChild(knob);
-  const guide = document.createElement('div'); guide.id = 'guide';
-  const tip = document.createElement('div'); tip.id = 'tip';
-  wrap.append(ph, guide, tip);
+  const scroller = $('tlScroll'), wrap = $('tlWrap'), rows = $('tlRows');
+  const ph = $('tlPh'), guide = $('tlGuide'), tip = $('tlTip');
+  const ov = $('tlOv'), selEl = $('tlSel'), back = $('tlBack');
+  const headTime = $('tlHeadTime'), zLabel = $('tlZoomLabel'), zOut = $('tlZoomOut'), zIn = $('tlZoomIn');
+  const follow = $('tlFollow'), btnPending = $('tlPending'), btnNext = $('tlNext');
+  const trTime = $('trTime'), trPlay = $('trPlay'), trPending = $('trPending');
+  const trCompare = $('trCompare'), origBadge = $('origBadge');
 
-  // 为每个目标生成一行（标签 + 轨道）
-  TARGETS.forEach((tg) => {
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.dataset.target = tg.id;
-    row.innerHTML = `<div class="lab ${tg.enabled ? '' : 'off'}" data-target="${tg.id}"><span class="dot" style="background:${tg.color}"></span>${tg.name}<small></small></div>
-                     <div class="trk lane" data-lane="${tg.id}"></div>`;
-    wrap.appendChild(row);
-  });
+  // ---------- 状态 ----------
+  const S = {
+    t: 0, playing: false, zoom: 1,
+    follow: true, followPaused: false,
+    scrubbing: false, hover: null,
+    onlyPending: false, sel: null, selTarget: null,
+    compare: false,
+    pendingScroll: null, progUntil: 0,
+  };
+  const undoStack = [], redoStack = [];
 
-  // ---------- 几何 ----------
-  const visW = () => scroller.clientWidth - LABEL_W;
-  const fitPps = () => Math.max(1, visW() / DUR);
-  const pps = () => fitPps() * S.zoom;
-  const visibleSec = () => visW() / pps();
-  const viewStartSec = () => scroller.scrollLeft / pps();
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const xOfTime = (t) => LABEL_W + t * pps();           // 内容坐标（相对 wrap）
-  const timeOfX = (x) => (x - LABEL_W) / pps();
-
-  function fmt(t) {
-    const m = Math.floor(t / 60), s = t - m * 60;
-    return `${String(m).padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`;
-  }
-  function fmtTick(s, decimals) {
-    const m = Math.floor(s / 60), sec = s - m * 60;
-    return decimals ? `${String(m).padStart(2, '0')}:${sec.toFixed(1).padStart(4, '0')}` : `${String(m).padStart(2, '0')}:${String(Math.round(sec)).padStart(2, '0')}`;
-  }
-
-  function setScroll(px) {
-    S.lastProg = performance.now();
-    scroller.scrollLeft = clamp(px, 0, Math.max(0, scroller.scrollWidth - scroller.clientWidth));
-  }
-
-  // 以 anchor 时刻为锚缩放；anchorSx 为锚点在可视区内的屏幕横坐标（相对 scroller 左边）
-  function zoomTo(z, anchor = S.t, anchorSx = null) {
-    const oldP = pps();
-    const sl = scroller.scrollLeft;
-    const sx = anchorSx ?? clamp(LABEL_W + anchor * oldP - sl, LABEL_W, scroller.clientWidth - 24);
-    S.zoom = clamp(z, MIN_ZOOM, MAX_ZOOM);
-    const newP = pps();
-    // 锚点的内容坐标 = LABEL_W + anchor * newP，屏幕位置保持为 sx
-    setScroll(LABEL_W + anchor * newP - sx);
-    refresh();
-  }
-  function centerOn(t) {
-    setScroll(t * pps() - visW() / 2);
-    refresh();
-  }
-  function zoomToRange(t0, t1) {
-    const span = Math.max(4, t1 - t0);
-    S.zoom = clamp(DUR / span, MIN_ZOOM, MAX_ZOOM);
-    setScroll((t0 - 0.5) * pps());
-    refresh();
+  // ---------- 几何（与 Timeline.tsx 的 visW / fit / pps / visibleSec / viewStart 相同） ----------
+  function geom() {
+    const width = scroller.clientWidth;
+    const visW = Math.max(1, width - LABEL_W);
+    const fit = visW / DUR;
+    const pps = fit * S.zoom;
+    return { width, visW, fit, pps, visibleSec: visW / pps, viewStart: scroller.scrollLeft / pps };
   }
 
   // ---------- 渲染 ----------
-  function buildRuler() {
-    const P = pps();
-    ruler.innerHTML = '';
-    ruler.style.width = DUR * P + 'px';
-    const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
-    const step = steps.find((s) => s * P >= 72) || 300;
+  // 行内容只依赖缩放、筛选、选中和段状态；播放头位置单独更新，避免每帧重建整张表。
+  function renderRows(g) {
+    const { pps, visibleSec, viewStart } = g;
+    const laneW = DUR * pps;
+    const step = STEPS.find((s) => s * pps >= 72) ?? 300;
     const minor = step / 5;
-    const decimals = step < 1;
-    const from = Math.max(0, Math.floor(viewStartSec() / minor) * minor - minor);
-    const to = Math.min(DUR, viewStartSec() + visibleSec() + minor);
+    const from = Math.max(0, Math.floor(viewStart / minor) * minor - minor);
+    const to = Math.min(DUR, viewStart + visibleSec + minor);
+    let ticks = '';
     for (let s = from; s <= to + 1e-9; s += minor) {
       const major = Math.abs(s / step - Math.round(s / step)) < 1e-6;
-      const d = document.createElement('div');
-      d.className = 'tick' + (major ? '' : ' minor');
-      d.style.left = s * P + 'px';
-      if (major) d.textContent = fmtTick(s, decimals);
-      ruler.appendChild(d);
+      ticks += `<div class="tl-tick${major ? '' : ' minor'}" style="left:${s * pps}px">${major ? tickLabel(s, step) : ''}</div>`;
     }
-  }
 
-  function buildLanes() {
-    const P = pps();
+    let html = `<div class="tl-row tl-ruler-row"><div class="tl-lab">时间（秒）</div><div class="tl-trk tl-ruler" style="width:${laneW}px">${ticks}</div></div>`;
     TARGETS.forEach((tg) => {
-      const lane = wrap.querySelector(`[data-lane="${tg.id}"]`);
-      lane.style.width = DUR * P + 'px';
-      lane.innerHTML = '';
-      SEGS.filter((s) => s.tg === tg.id && s.status !== 'rejected' && (!S.onlyPending || s.status === 'pending' || s.status === 'low'))
-        .forEach((s) => {
-          const b = document.createElement('div');
-          b.className = `blk st-${s.status}` + (S.sel === s.id ? ' sel' : '');
-          b.style.left = s.t0 * P + 'px';
-          b.style.width = Math.max(4, (s.t1 - s.t0) * P) + 'px';
-          b.style.setProperty('--c', tg.color);
-          b.dataset.seg = s.id;
-          b.title = `${tg.name} ${fmt(s.t0)} – ${fmt(s.t1)} · ${STATUS_LABEL[s.status]}（双击放大）`;
-          b.textContent = (s.t1 - s.t0) * P > 60 ? `${s.t0.toFixed(0)}s` : '';
-          lane.appendChild(b);
-        });
-      const count = SEGS.filter((s) => s.tg === tg.id && s.status !== 'rejected').length;
-      wrap.querySelector(`[data-target="${tg.id}"] small`).textContent = !tg.enabled ? '已停用' : count ? `${count} 段` : '未检出';
-      wrap.querySelectorAll(`[data-target="${tg.id}"]`).forEach((el) => el.classList.toggle('sel', S.selTarget === tg.id));
+      const all = SEGS.filter((s) => s.target === tg.id && s.status !== 'rejected');
+      const shown = all.filter((s) => !S.onlyPending || s.status === 'pending' || s.status === 'low');
+      const blocks = shown.map((s) => {
+        const w = (s.t1 - s.t0) * pps;
+        const title = `${tg.name} ${formatTime(s.t0)} – ${formatTime(s.t1)}（双击放大）`;
+        const label = w > 60 ? `${s.t0.toFixed(0)}s` : '';
+        return `<div class="tl-blk st-${s.status}${S.sel === s.id ? ' sel' : ''}" data-seg="${s.id}" style="left:${s.t0 * pps}px;width:${Math.max(4, w)}px;--c:${tg.color}" title="${title}">${label}</div>`;
+      }).join('');
+      html += `<div class="tl-row"><div class="tl-lab${S.selTarget === tg.id ? ' sel' : ''}${tg.enabled ? '' : ' off'}" data-target="${tg.id}"><span class="dot" style="background:${tg.color}"></span>${tg.name}<small>${tg.enabled ? `${all.length} 段` : '已停用'}</small></div><div class="tl-trk tl-lane" style="width:${laneW}px">${blocks}</div></div>`;
     });
-    wrap.style.width = LABEL_W + DUR * P + 'px';
+    rows.innerHTML = html;
   }
 
-  function updatePlayhead() {
-    ph.style.left = xOfTime(S.t) + 'px';
-    ph.style.height = wrap.offsetHeight + 'px';
-    timeText.innerHTML = `<b>${fmt(S.t)}</b> <span>/ ${fmt(DUR)}</span>`;
-    const x = xOfTime(S.t) - scroller.scrollLeft;
-    const visible = x >= LABEL_W && x <= scroller.clientWidth - 6;
-    btnBack.style.display = visible ? 'none' : 'block';
+  function renderOverview(g) {
+    const segs = SEGS.filter((s) => s.status !== 'rejected').map((s) => {
+      const color = targetById(s.target).color;
+      return `<div class="tl-ovseg" style="left:${(s.t0 / DUR) * 100}%;width:${Math.max(0.3, ((s.t1 - s.t0) / DUR) * 100)}%;background:${color}"></div>`;
+    }).join('');
+    ov.innerHTML = segs + `<div class="tl-vp" style="left:${(g.viewStart / DUR) * 100}%;width:${Math.max(1.5, (g.visibleSec / DUR) * 100)}%"><i class="tl-edge l" data-edge="l"></i><i class="tl-edge r" data-edge="r"></i></div>`;
   }
 
-  function drawOverview() {
-    ov.querySelectorAll('.ovseg').forEach((n) => n.remove());
-    const frag = document.createDocumentFragment();
-    SEGS.forEach((s) => {
-      if (s.status === 'rejected') return;
-      const d = document.createElement('div');
-      d.className = 'ovseg';
-      d.style.left = (s.t0 / DUR) * 100 + '%';
-      d.style.width = Math.max(0.3, ((s.t1 - s.t0) / DUR) * 100) + '%';
-      d.style.background = colorOf(s.tg);
-      frag.appendChild(d);
-    });
-    ov.insertBefore(frag, vp);
-    vp.style.left = (viewStartSec() / DUR) * 100 + '%';
-    vp.style.width = Math.max(1.5, (visibleSec() / DUR) * 100) + '%';
+  function renderHeader(g) {
+    zLabel.textContent = S.zoom <= 1.001 ? `全片 · ${Math.round(DUR)} 秒可见` : `×${S.zoom.toFixed(1)} · ${g.visibleSec.toFixed(0)} 秒可见`;
+    zOut.disabled = S.zoom <= MIN_ZOOM + 1e-6;
+    zIn.disabled = S.zoom >= MAX_ZOOM - 1e-6;
+    follow.checked = S.follow;
+    btnPending.classList.toggle('on', S.onlyPending);
+    const pc = pendingCount();
+    btnPending.textContent = `只看待确认（${pc}）`;
+    btnNext.disabled = pc === 0;
+    trPending.textContent = `${pc} 段待确认`;
   }
 
-  function renderSelBar() {
-    const s = SEGS.find((x) => x.id === S.sel);
+  function renderSel() {
+    const s = segById(S.sel);
     if (!s) {
-      selbar.innerHTML = `<span class="muted">单击时间轴上的段可选中（双击放大到该段）。当前时刻 ${fmt(S.t)}；按 <kbd>F</kbd> 跳到下一待确认段。</span>`;
+      selEl.innerHTML = '<span class="muted">单击段可选中（双击放大到该段）。选中后可在这里接受或否决。</span>';
       return;
     }
-    const can = s.status !== 'confirmed';
-    selbar.innerHTML = `
-      <span class="dot" style="background:${colorOf(s.tg)}"></span>
-      <b>${nameOf(s.tg)}</b>
-      <span>${fmt(s.t0)} – ${fmt(s.t1)}（${(s.t1 - s.t0).toFixed(1)} s）</span>
+    const tg = targetById(s.target);
+    selEl.innerHTML = `
+      <span class="dot" style="background:${tg.color}"></span>
+      <b>${tg.name}</b>
+      <span>${formatTime(s.t0)} – ${formatTime(s.t1)}（${(s.t1 - s.t0).toFixed(1)} s）</span>
       <span class="badge ${s.status}">${STATUS_LABEL[s.status]}</span>
-      <span class="muted">置信 ${s.conf}</span>
+      <span class="muted">置信 ${s.conf.toFixed(2)}</span>
       <span class="sp"></span>
-      <button data-act="accept" class="primary" ${can ? '' : 'disabled'}>接受 <kbd>Enter</kbd></button>
-      <button data-act="reject">否决 <kbd>Del</kbd></button>
+      <button class="primary" data-act="accept" ${s.status === 'confirmed' ? 'disabled' : ''}>接受 <kbd>Enter</kbd></button>
+      <button data-act="reject" ${s.status === 'rejected' ? 'disabled' : ''}>否决 <kbd>Del</kbd></button>
       <button data-act="zoom">放大到该段</button>`;
   }
 
-  function updateZoomLabel() {
-    const vis = visibleSec();
-    zLabel.textContent = S.zoom <= 1.001 ? `全片 · ${Math.round(DUR)} 秒可见` : `×${S.zoom.toFixed(1)} · ${vis.toFixed(0)} 秒可见`;
-    $('zOut').disabled = S.zoom <= MIN_ZOOM + 1e-6;
-    $('zIn').disabled = S.zoom >= MAX_ZOOM - 1e-6;
+  function renderHover() {
+    if (!S.hover) {
+      guide.style.display = 'none';
+      tip.style.display = 'none';
+      return;
+    }
+    guide.style.display = 'block';
+    guide.style.left = S.hover.x + 'px';
+    tip.style.display = 'block';
+    tip.style.left = S.hover.x + 'px';
+    tip.textContent = formatTime(S.hover.t);
   }
 
-  function refresh() {
-    buildRuler();
-    buildLanes();
-    drawOverview();
+  function updatePlayhead() {
+    const g = geom();
+    const x = LABEL_W + S.t * g.pps;
+    ph.style.left = x + 'px';
+    const visible = x - scroller.scrollLeft >= LABEL_W && x - scroller.scrollLeft <= scroller.clientWidth - 8;
+    back.style.display = visible ? 'none' : '';
+    headTime.textContent = `播放头 ${formatTime(S.t)}`;
+    trTime.textContent = `${formatTime(S.t)} / ${formatTime(DUR)}`;
+    trPlay.textContent = S.playing ? '❚❚' : '▶';
+    trPlay.title = S.playing ? '暂停 (Space)' : '播放 (Space)';
+    trCompare.classList.toggle('on', S.compare);
+    origBadge.style.display = S.compare ? '' : 'none';
+  }
+
+  // 每次状态变化后的完整刷新。滚动位置在这里应用，保证 wrap 宽度先更新。
+  function render() {
+    wrap.style.width = LABEL_W + DUR * geom().pps + 'px';
+    if (S.pendingScroll !== null) {
+      const px = clamp(S.pendingScroll, 0, Math.max(0, scroller.scrollWidth - scroller.clientWidth));
+      S.pendingScroll = null;
+      S.progUntil = performance.now() + 120;     // 程序滚动，不视为用户手动滚动
+      scroller.scrollLeft = px;
+    }
+    const g = geom();
+    renderRows(g);
+    renderOverview(g);
+    renderHeader(g);
+    renderSel();
+    renderHover();
     updatePlayhead();
-    updateZoomLabel();
-    renderSelBar();
-    pendCount.textContent = `（${SEGS.filter((s) => s.status === 'pending' || s.status === 'low').length}）`;
-    $('btnPending').classList.toggle('on', S.onlyPending);
-    $('speed').value = String(S.speed);
   }
 
-  // ---------- 播放 ----------
+  // ---------- 视口操作（对应 Timeline.tsx 的 setScroll / zoomTo / zoomToRange / reveal / centerOn） ----------
+  function setScroll(px) {
+    S.progUntil = performance.now() + 120;
+    scroller.scrollLeft = clamp(px, 0, Math.max(0, scroller.scrollWidth - scroller.clientWidth));
+    render();
+  }
+  function zoomTo(z, anchorT, anchorSx) {
+    const nz = clamp(z, MIN_ZOOM, MAX_ZOOM);
+    S.pendingScroll = LABEL_W + anchorT * geom().fit * nz - anchorSx;
+    S.zoom = nz;
+    render();
+  }
+  function zoomBy(f) {
+    const g = geom();
+    const sx = clamp(LABEL_W + S.t * g.pps - scroller.scrollLeft, LABEL_W, Math.max(LABEL_W, g.width - 20));
+    zoomTo(S.zoom * f, S.t, sx);
+  }
+  function zoomFit() {
+    S.pendingScroll = 0;
+    S.zoom = 1;
+    render();
+  }
+  function zoomToRange(t0, t1) {
+    const g = geom();
+    const nz = clamp(DUR / Math.max(4, t1 - t0 + 2), MIN_ZOOM, MAX_ZOOM);
+    S.pendingScroll = (t0 - 0.5) * g.fit * nz;
+    S.zoom = nz;
+    render();
+  }
+  function reveal(t) {
+    const g = geom();
+    const x = LABEL_W + t * g.pps;
+    const left = scroller.scrollLeft + LABEL_W;
+    const right = scroller.scrollLeft + scroller.clientWidth - 16;
+    if (x < left || x > right) setScroll(t * g.pps - g.visW * 0.1);
+  }
+  function centerOn(t) {
+    S.followPaused = false;
+    const g = geom();
+    setScroll(t * g.pps - g.visW / 2);
+  }
+
+  // ---------- 播放头与跟随 ----------
+  function followPlayhead() {
+    const g = geom();
+    const x = LABEL_W + S.t * g.pps;
+    const left = scroller.scrollLeft + LABEL_W;
+    const right = scroller.scrollLeft + scroller.clientWidth - 8;
+    if (x < left || x > right) setScroll(x - LABEL_W - g.visW * 0.1);
+  }
+  // 擦洗时不自动滚动（与 Timeline.tsx 的 follow effect 一致）
+  function seek(t) {
+    S.t = clamp(t, 0, DUR);
+    if (S.follow && !S.followPaused && !S.scrubbing) followPlayhead();
+    updatePlayhead();
+  }
   function setPlaying(p) {
     S.playing = p && S.t < DUR;
-    btnPlay.textContent = S.playing ? '❚❚' : '▶';
-    btnPlay.title = S.playing ? '暂停 (Space)' : '播放 (Space)';
-  }
-  function seekTo(t) {
-    S.t = clamp(t, 0, DUR);
     updatePlayhead();
-    timeText.dataset.t = S.t;
   }
-  function followPlayhead() {
-    const x = xOfTime(S.t);
-    const sl = scroller.scrollLeft;
-    const visLeft = sl + LABEL_W, visRight = sl + scroller.clientWidth - 8;
-    if (x < visLeft || x > visRight) setScroll(x - LABEL_W - visW() * 0.1);
-  }
-  let last = performance.now();
-  function loop(now) {
-    const dt = Math.min(0.1, (now - last) / 1000);
-    last = now;
-    if (S.playing) {
-      S.t += dt * S.speed;
-      if (S.t >= DUR) { S.t = DUR; setPlaying(false); }
-      if (S.follow && !S.followPaused) followPlayhead();
-      updatePlayhead();
-      timeText.innerHTML = `<b>${fmt(S.t)}</b> <span>/ ${fmt(DUR)}</span>`;
-    }
-    requestAnimationFrame(loop);
-  }
-
-  // ---------- 操作 ----------
-  // 只切换选中样式，不重建 DOM，避免点击与双击之间元素被替换
   function selectSeg(id) {
-    const s = SEGS.find((x) => x.id === id);
+    const s = segById(id);
     S.sel = id;
-    if (s) S.selTarget = s.tg;
-    wrap.querySelectorAll('.blk').forEach((b) => b.classList.toggle('sel', b.dataset.seg === S.sel));
-    wrap.querySelectorAll('.lab[data-target]').forEach((l) => l.classList.toggle('sel', l.dataset.target === S.selTarget));
-    renderSelBar();
+    if (s) S.selTarget = s.target;
+    render();
   }
   function applyStatus(id, status) {
-    const s = SEGS.find((x) => x.id === id);
+    const s = segById(id);
     if (!s || s.status === status) return;
     undoStack.push({ id, prev: s.status });
+    redoStack.length = 0;
     s.status = status;
-    toast(status === 'rejected' ? '已否决 · Ctrl+Z 撤销' : '已接受 · Ctrl+Z 撤销');
-    refresh();
+    render();
   }
   function undo() {
     const u = undoStack.pop();
-    if (!u) return toast('没有可撤销的操作');
-    SEGS.find((x) => x.id === u.id).status = u.prev;
-    toast('已撤销');
-    refresh();
+    if (!u) return;
+    const s = segById(u.id);
+    redoStack.push({ id: u.id, next: s.status });
+    s.status = u.prev;
+    render();
   }
-  function nextPending() {
-    const list = SEGS.filter((s) => s.status === 'pending' || s.status === 'low').sort((a, b) => a.t0 - b.t0);
-    if (!list.length) return toast('没有待确认段');
-    const n = list.find((s) => s.t0 > S.t + 0.05) || list[0];
-    S.sel = n.id; S.selTarget = n.tg;
-    seekTo(n.t0);
-    if (S.follow) { S.followPaused = false; centerOn(n.t0); } else refresh();
-    refresh();
-  }
-  let toastTimer = 0;
-  function toast(msg) {
-    toastEl.textContent = msg;
-    toastEl.style.display = 'block';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (toastEl.style.display = 'none'), 2400);
+  function redo() {
+    const r = redoStack.pop();
+    if (!r) return;
+    const s = segById(r.id);
+    undoStack.push({ id: r.id, prev: s.status });
+    s.status = r.next;
+    render();
   }
 
-  // 标尺 / 轨道擦洗：按下即定位，拖动时持续定位
-  function scrubAt(clientX) {
+  // 擦洗：按下即定位（对应 scrubTo）
+  function scrubTo(clientX) {
     const r = wrap.getBoundingClientRect();
-    seekTo(timeOfX(clientX - r.left));
-    showTip(clientX - r.left, fmt(S.t), true);
+    seek(clamp((clientX - r.left - LABEL_W) / geom().pps, 0, DUR));
   }
-  function showTip(x, text, isPh) {
-    tip.textContent = text;
-    tip.style.left = x + 'px';
-    tip.style.display = 'block';
-    tip.classList.toggle('ph-tip', !!isPh);
-  }
-  function hideTip() { tip.style.display = 'none'; guide.style.display = 'none'; }
 
+  // ---------- 指针与滚轮（事件委托到滚动容器，与 Timeline.tsx 相同） ----------
   scroller.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    const blk = e.target.closest('.blk');
+    const t = e.target;
+    const blk = t.closest('.tl-blk');
     if (blk) {
-      selectSeg(blk.dataset.seg);
-      seekTo(SEGS.find((x) => x.id === blk.dataset.seg).t0);
+      const s = segById(blk.dataset.seg);
+      selectSeg(s.id);
+      seek(s.t0);
       return;
     }
-    const lab = e.target.closest('.lab');
+    const lab = t.closest('.tl-lab');
     if (lab) {
-      // 只有目标标签可以点击；标尺左上角的"时间"标签不响应
       if (lab.dataset.target) {
-        S.selTarget = S.selTarget === lab.dataset.target ? null : lab.dataset.target;
-        selectSeg(S.sel);
+        S.selTarget = lab.dataset.target;
+        render();
       }
       return;
     }
-    if (e.target.closest('.ruler-row, .lane, #ph, .knob')) {
-      S.scrubbing = true;
-      ph.classList.add('dragging');
+    if (t.closest('.tl-ruler, .tl-lane, .tl-knob')) {
       scroller.setPointerCapture(e.pointerId);
-      scrubAt(e.clientX);
+      S.scrubbing = true;
+      scrubTo(e.clientX);
       e.preventDefault();
     }
   });
+
   scroller.addEventListener('pointermove', (e) => {
     if (S.scrubbing) {
-      scrubAt(e.clientX);
+      scrubTo(e.clientX);
       return;
     }
     const r = wrap.getBoundingClientRect();
     const x = e.clientX - r.left;
-    if (x >= LABEL_W && e.target.closest('.ruler-row, .lane, .tick')) {
-      guide.style.display = 'block';
-      guide.style.left = x + 'px';
-      showTip(x, fmt(timeOfX(x)), false);
+    if (x >= LABEL_W && e.target.closest('.tl-ruler, .tl-lane')) {
+      S.hover = { x, t: clamp((x - LABEL_W) / geom().pps, 0, DUR) };
     } else {
-      hideTip();
+      S.hover = null;
     }
+    renderHover();
   });
-  scroller.addEventListener('pointerup', () => {
-    if (!S.scrubbing) return;
-    S.scrubbing = false;
-    ph.classList.remove('dragging');
-    hideTip();
+
+  scroller.addEventListener('pointerup', () => { S.scrubbing = false; });
+  scroller.addEventListener('pointerleave', () => {
+    if (S.scrubbing) return;
+    S.hover = null;
+    renderHover();
   });
-  scroller.addEventListener('pointerleave', () => { if (!S.scrubbing) hideTip(); });
+
   scroller.addEventListener('dblclick', (e) => {
-    const blk = e.target.closest('.blk');
+    const blk = e.target.closest('.tl-blk');
     if (!blk) return;
-    const s = SEGS.find((x) => x.id === blk.dataset.seg);
+    const s = segById(blk.dataset.seg);
     zoomToRange(s.t0, s.t1);
   });
 
-  // 滚轮：Ctrl/⌘ 缩放（以鼠标为中心），其余交给浏览器（Shift 横向、普通纵向）
+  // Ctrl/⌘ + 滚轮：以鼠标为中心缩放；Shift + 滚轮交给浏览器做横向滚动
   scroller.addEventListener('wheel', (e) => {
     if (!(e.ctrlKey || e.metaKey)) return;
     e.preventDefault();
     const r = scroller.getBoundingClientRect();
     const sx = e.clientX - r.left;
-    const anchor = timeOfX(scroller.scrollLeft + sx);
+    const anchor = (scroller.scrollLeft + sx - LABEL_W) / geom().pps;
     zoomTo(S.zoom * Math.exp(-e.deltaY * 0.0015), anchor, sx);
   }, { passive: false });
 
+  // 用户手动滚动时，播放中暂停跟随
   scroller.addEventListener('scroll', () => {
-    const manual = performance.now() - S.lastProg > 80;
-    if (manual && S.playing && S.follow) S.followPaused = true;
-    if (manual) S.lastProg = 0;
-    drawOverview();
-    buildRuler();
-    updatePlayhead();
-    updateZoomLabel();
+    if (performance.now() > S.progUntil && S.follow && S.playing) S.followPaused = true;
+    render();
   });
 
-  // 总览条：拖视口平移；拖两端改缩放；点击跳转
+  // 总览条：拖动视口平移；拖动两端改缩放；点击跳转（对应 onOvDown / onOvMove）
   let ovDrag = null;
   ov.addEventListener('pointerdown', (e) => {
-    const edge = e.target.dataset && e.target.dataset.edge;
-    const ovRect = ov.getBoundingClientRect();
+    if (e.button !== 0) return;
+    const r = ov.getBoundingClientRect();
     ov.setPointerCapture(e.pointerId);
-    if (edge) {
-      ovDrag = { mode: edge, startSec: viewStartSec(), endSec: viewStartSec() + visibleSec() };
-    } else if (e.target === vp) {
-      ovDrag = { mode: 'pan', x0: e.clientX, start0: viewStartSec() };
+    const g = geom();
+    const start = g.viewStart, end = g.viewStart + g.visibleSec;
+    const edge = e.target.dataset ? e.target.dataset.edge : undefined;
+    if (edge === 'l' || edge === 'r') {
+      ovDrag = { mode: edge, x0: e.clientX, start0: start, end0: end };
+    } else if (e.target.classList.contains('tl-vp')) {
+      ovDrag = { mode: 'pan', x0: e.clientX, start0: start, end0: end };
     } else {
-      centerOn(clamp(((e.clientX - ovRect.left) / ovRect.width) * DUR, 0, DUR));
-      return;
+      centerOn(clamp(((e.clientX - r.left) / r.width) * DUR, 0, DUR));
+      ovDrag = null;
     }
-    e.preventDefault();
   });
   ov.addEventListener('pointermove', (e) => {
-    if (!ovDrag) return;
-    const ovRect = ov.getBoundingClientRect();
-    if (ovDrag.mode === 'pan') {
-      const dt = ((e.clientX - ovDrag.x0) / ovRect.width) * DUR;
-      setScroll((ovDrag.start0 + dt) * pps());
-      refresh();
+    const d = ovDrag;
+    if (!d) return;
+    const r = ov.getBoundingClientRect();
+    const g = geom();
+    if (d.mode === 'pan') {
+      const dt = ((e.clientX - d.x0) / r.width) * DUR;
+      S.followPaused = true;
+      setScroll((d.start0 + dt) * g.pps);
       return;
     }
-    const x = clamp(((e.clientX - ovRect.left) / ovRect.width) * DUR, 0, DUR);
-    if (ovDrag.mode === 'r') {
-      const end = Math.max(x, ovDrag.startSec + 2);
-      S.zoom = clamp(DUR / (end - ovDrag.startSec), MIN_ZOOM, MAX_ZOOM);
-      setScroll(ovDrag.startSec * pps());
+    const sec = clamp(((e.clientX - r.left) / r.width) * DUR, 0, DUR);
+    if (d.mode === 'r') {
+      const end = Math.max(sec, d.start0 + 2);
+      const nz = clamp(DUR / (end - d.start0), MIN_ZOOM, MAX_ZOOM);
+      S.pendingScroll = d.start0 * g.fit * nz;
+      S.zoom = nz;
     } else {
-      const start = Math.min(x, ovDrag.endSec - 2);
-      S.zoom = clamp(DUR / (ovDrag.endSec - start), MIN_ZOOM, MAX_ZOOM);
-      setScroll(start * pps());
+      const start = Math.min(sec, d.end0 - 2);
+      const nz = clamp(DUR / (d.end0 - start), MIN_ZOOM, MAX_ZOOM);
+      S.pendingScroll = start * g.fit * nz;
+      S.zoom = nz;
     }
-    refresh();
+    render();
   });
   const endOv = () => { ovDrag = null; };
   ov.addEventListener('pointerup', endOv);
   ov.addEventListener('pointercancel', endOv);
 
-  // 标签列与选中段的操作
-  selbar.addEventListener('click', (e) => {
+  // 选中段信息条（事件委托）
+  selEl.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-act]');
-    if (!b || !S.sel) return;
-    const act = b.dataset.act;
-    if (act === 'accept') applyStatus(S.sel, 'confirmed');
-    if (act === 'reject') applyStatus(S.sel, 'rejected');
-    if (act === 'zoom') {
-      const s = SEGS.find((x) => x.id === S.sel);
-      zoomToRange(s.t0, s.t1);
+    if (!b || b.disabled || !S.sel) return;
+    const s = segById(S.sel);
+    if (b.dataset.act === 'accept') applyStatus(s.id, 'confirmed');
+    if (b.dataset.act === 'reject') applyStatus(s.id, 'rejected');
+    if (b.dataset.act === 'zoom') zoomToRange(s.t0, s.t1);
+  });
+
+  // ---------- 头部按钮 ----------
+  zOut.onclick = () => zoomBy(1 / 1.5);
+  zIn.onclick = () => zoomBy(1.5);
+  $('tlFit').onclick = zoomFit;
+  follow.onchange = () => { S.follow = follow.checked; S.followPaused = false; render(); };
+  btnPending.onclick = () => { S.onlyPending = !S.onlyPending; render(); };
+  btnNext.onclick = () => {
+    const n = nextPending(S.t);
+    if (!n) return;
+    selectSeg(n.id);
+    seek(n.t0);
+    reveal(n.t0);
+  };
+  back.onclick = () => centerOn(S.t);
+
+  // ---------- 播放栏（应用中由 App 提供，这里仅用于演示） ----------
+  $('trStart').onclick = () => seek(0);
+  $('trPrev').onclick = () => seek(S.t - 1 / FPS);
+  $('trNext').onclick = () => seek(S.t + 1 / FPS);
+  trPlay.onclick = () => setPlaying(!S.playing);
+  trCompare.onclick = () => { S.compare = !S.compare; updatePlayhead(); };
+
+  // ---------- 键盘（与 App.tsx 的 onKey 一致） ----------
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches && e.target.matches('input, select, textarea')) return;
+    const k = e.key;
+    const key = k.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redo(); else undo();
+      return;
+    }
+    const step = e.shiftKey ? 1 : 1 / FPS;
+    switch (k) {
+      case ' ': e.preventDefault(); setPlaying(!S.playing); return;
+      case 'ArrowLeft': e.preventDefault(); seek(S.t - step); return;
+      case 'ArrowRight': e.preventDefault(); seek(S.t + step); return;
+      case 'Enter': if (S.sel) applyStatus(S.sel, 'confirmed'); return;
+      case 'Backspace':
+      case 'Delete': e.preventDefault(); if (S.sel) applyStatus(S.sel, 'rejected'); return;
+      case '\\': S.compare = !S.compare; updatePlayhead(); return;
+    }
+    if (key === 'f') {
+      const n = nextPending(S.t);
+      if (n) { selectSeg(n.id); seek(n.t0); }
     }
   });
 
-  // 按钮
-  $('btnPlay').onclick = () => setPlaying(!S.playing);
-  $('btnStart').onclick = () => { seekTo(0); setPlaying(false); refresh(); };
-  $('btnPrev').onclick = () => { seekTo(S.t - 1 / 30); refresh(); };
-  $('btnNext').onclick = () => { seekTo(S.t + 1 / 30); refresh(); };
-  $('speed').onchange = (e) => { S.speed = Number(e.target.value); };
-  $('zOut').onclick = () => zoomTo(S.zoom / 1.5, S.t);
-  $('zIn').onclick = () => zoomTo(S.zoom * 1.5, S.t);
-  $('zFit').onclick = () => { S.zoom = 1; setScroll(0); refresh(); };
-  $('follow').onchange = (e) => { S.follow = e.target.checked; S.followPaused = false; };
-  $('btnPending').onclick = () => { S.onlyPending = !S.onlyPending; refresh(); };
-  $('btnNextPending').onclick = nextPending;
-  btnBack.onclick = () => { S.followPaused = false; centerOn(S.t); };
+  // ---------- 播放循环（演示用；应用中由视频预览推进时间） ----------
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (S.playing) {
+      seek(S.t + dt);
+      if (S.t >= DUR) setPlaying(false);
+    }
+    requestAnimationFrame(loop);
+  }
 
-  // 键盘
-  document.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, select, textarea')) return;
-    const k = e.key;
-    const step = e.shiftKey ? 1 : 1 / 30;
-    if (k === ' ') { e.preventDefault(); setPlaying(!S.playing); }
-    else if (k === 'ArrowLeft') { e.preventDefault(); seekTo(S.t - step); refresh(); }
-    else if (k === 'ArrowRight') { e.preventDefault(); seekTo(S.t + step); refresh(); }
-    else if (k === 'Home') { seekTo(0); refresh(); }
-    else if (k === 'End') { seekTo(DUR); refresh(); }
-    else if (k === 'f' || k === 'F') nextPending();
-    else if (k === 'Enter' && S.sel) applyStatus(S.sel, 'confirmed');
-    else if ((k === 'Delete' || k === 'Backspace') && S.sel) { e.preventDefault(); applyStatus(S.sel, 'rejected'); }
-    else if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); }
-    else if (k === '+' || k === '=') zoomTo(S.zoom * 1.5, S.t);
-    else if (k === '-' || k === '_') zoomTo(S.zoom / 1.5, S.t);
-    else if (k === '0') { S.zoom = 1; setScroll(0); refresh(); }
-  });
+  // 视口宽度变化时重绘
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => render()).observe(scroller);
+  window.addEventListener('resize', render);
 
-  // 按钮点击后不保留焦点，避免空格或回车再次触发按钮
-  document.addEventListener('click', (e) => {
-    if (e.target.tagName === 'BUTTON') e.target.blur();
-  });
-  window.addEventListener('resize', refresh);
+  render();
   requestAnimationFrame(loop);
-  refresh();
-  seekTo(0);
-  refresh();
 })();
 </script>
 </body>
