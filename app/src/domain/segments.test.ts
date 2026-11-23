@@ -25,6 +25,8 @@ function target(id: string, enabled = true): Target {
     roi: null,
     style: { kind: 'mosaic', strength: 0.6, padding: 4, feather: true, motion_pad: false },
     enabled,
+    scan_start: 0,
+    scan_end: null,
   };
 }
 

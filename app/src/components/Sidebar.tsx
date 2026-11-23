@@ -13,11 +13,6 @@ interface Props {
   onToggleTarget: (id: string, enabled: boolean) => void;
   onNewTarget: () => void;
   onScanAll: () => void;
-  /** 扫描范围的输入文本（秒），留空分别表示 0 与视频末尾。 */
-  scanStart: string;
-  scanEnd: string;
-  onScanStartChange: (value: string) => void;
-  onScanEndChange: (value: string) => void;
   threads: number;
   onThreadsChange: (value: number) => void;
 }
@@ -31,20 +26,15 @@ export function Sidebar({
   onToggleTarget,
   onNewTarget,
   onScanAll,
-  scanStart,
-  scanEnd,
-  onScanStartChange,
-  onScanEndChange,
   threads,
   onThreadsChange,
 }: Props) {
   const enabled = project.targets.filter((t) => t.enabled).length;
-  const duration = project.video?.duration ?? 0;
   return (
     <aside className="sidebar">
       <div className="sec-row">
         <div className="sec">目标</div>
-        <button className="sm" disabled={busy || enabled === 0} title="扫描所有启用的目标" onClick={onScanAll}>
+        <button className="sm" disabled={busy || enabled === 0} title="扫描所有启用的目标（各自按自己的扫描范围）" onClick={onScanAll}>
           扫描全部
         </button>
       </div>
@@ -90,30 +80,6 @@ export function Sidebar({
       </div>
       <div className="scan-settings">
         <label>
-          起点（秒）
-          <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={scanStart}
-            disabled={busy}
-            onChange={(e) => onScanStartChange(e.target.value)}
-          />
-        </label>
-        <label>
-          终点（秒）
-          <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={scanEnd}
-            placeholder={duration > 0 ? duration.toFixed(1) : '末尾'}
-            disabled={busy}
-            onChange={(e) => onScanEndChange(e.target.value)}
-          />
-        </label>
-        <p className="muted small">终点留空表示扫到视频末尾。</p>
-        <label>
           检测线程数
           <input
             type="number"
@@ -128,7 +94,7 @@ export function Sidebar({
             }}
           />
         </label>
-        <p className="muted small">默认 4。线程越多占用 CPU 越多。</p>
+        <p className="muted small">默认 4。扫描范围在每个目标的检查器里单独设置。</p>
       </div>
     </aside>
   );

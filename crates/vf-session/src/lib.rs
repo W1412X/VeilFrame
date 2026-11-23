@@ -112,23 +112,26 @@ pub const DEFAULT_SCAN_THREADS: usize = 4;
 /// 检测线程数上限。
 pub const MAX_SCAN_THREADS: usize = 16;
 
-/// 扫描选项。时间单位为秒，均为视频内的绝对时间。
+/// 扫描选项。扫描范围不在这里设置，而是每个目标自己的 `scan_start` / `scan_end`。
 #[derive(Debug, Clone, Copy)]
 pub struct ScanOptions {
     /// 抽帧间隔（秒）。
     pub interval: f64,
     /// 检测线程数，取值 1 到 [`MAX_SCAN_THREADS`]，超出范围时被截断。
     pub threads: usize,
-    /// 扫描起点（秒）。
-    pub start: f64,
-    /// 扫描终点（秒）。`None` 表示扫到视频末尾。
-    pub end: Option<f64>,
 }
 
 impl Default for ScanOptions {
     fn default() -> Self {
-        Self { interval: 0.5, threads: DEFAULT_SCAN_THREADS, start: 0.0, end: None }
+        Self { interval: 0.5, threads: DEFAULT_SCAN_THREADS }
     }
+}
+
+/// 目标自己的扫描范围 `(起点, 终点)`（秒）。终点缺省为视频末尾，两端都截断到视频时长内。
+pub fn target_range(target: &Target, duration: f64) -> (f64, f64) {
+    let start = target.scan_start.max(0.0).min(duration);
+    let end = target.scan_end.unwrap_or(duration).min(duration);
+    (start, end)
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -307,13 +310,8 @@ impl Session {
         if video.duration <= 0.0 {
             return Err(SessionError::Scan("视频时长为 0，无法扫描".into()));
         }
-        let start = opts.start.max(0.0);
-        let end = opts.end.unwrap_or(video.duration).min(video.duration);
-        if !(start < end) {
-            return Err(SessionError::Scan(format!("扫描范围无效：{start:.2} s 到 {end:.2} s")));
-        }
         if target_ids.is_empty() {
-            return Ok(ScanSummary { scanned_until: end, ..Default::default() });
+            return Ok(ScanSummary { scanned_until: video.duration, ..Default::default() });
         }
         for id in target_ids {
             if self.project().target(id).is_none() {
@@ -322,10 +320,6 @@ impl Session {
         }
 
         let interval = opts.interval.max(0.05);
-        let (window_start, window_len) = sample_window(start, end, interval);
-        if window_len <= 0.0 {
-            return Err(SessionError::Scan("扫描范围内没有采样点，请放宽范围或减小间隔".into()));
-        }
         let threads = opts.threads.clamp(1, MAX_SCAN_THREADS);
         // 检测线程之间已经并行，OpenCV 内部再开线程会相乘，因此多线程时把它限为 1。
         let _cv_threads = (threads > 1).then(|| CvThreadsGuard::limit(1));
@@ -336,11 +330,11 @@ impl Session {
         let project_dir = self.project_path.as_deref().and_then(Path::parent).map(Path::to_path_buf);
         let intra = intra_op_threads(threads);
 
-        // 每个条目为 (目标, 新段, 是否取消, 替换范围的终点)。替换范围是 [start, 终点]。
         let (built, cache_warning, stopped) = {
             let Session { editor, config, cache, .. } = self;
             let project = editor.project();
-            let mut built: Vec<(String, Vec<Segment>, bool, f64)> = Vec::new();
+            // 每个条目为 (目标, 新段, 是否取消, 替换范围起点, 替换范围终点)。
+            let mut built: Vec<(String, Vec<Segment>, bool, f64, f64)> = Vec::new();
             let total = target_ids.len();
             let mut stopped = false;
 
@@ -350,8 +344,16 @@ impl Session {
                     break;
                 }
                 let target = project.target(tid).expect("已校验目标存在").clone();
+                // 范围属于目标本身：只扫描该目标自己设定的时间段。
+                let (start, end) = target_range(&target, video.duration);
+                if !(start < end) {
+                    return Err(SessionError::Scan(format!(
+                        "目标「{}」的扫描范围无效：{start:.2} s 到 {end:.2} s",
+                        target.name
+                    )));
+                }
                 if target.kind == TargetKind::Region {
-                    // 固定区域不需要检测：直接生成覆盖扫描范围的一段，框即区域（缺省整帧）。
+                    // 固定区域不需要检测：直接生成覆盖该目标扫描范围的一段，框即区域（缺省整帧）。
                     progress(ScanProgress {
                         target_index: idx,
                         target_total: total,
@@ -359,8 +361,15 @@ impl Session {
                         t: start,
                         duration: video.duration,
                     });
-                    built.push((tid.clone(), vec![region_segment(&target, &video, start, end)], false, end));
+                    built.push((tid.clone(), vec![region_segment(&target, &video, start, end)], false, start, end));
                     continue;
+                }
+                let (window_start, window_len) = sample_window(start, end, interval);
+                if window_len <= 0.0 {
+                    return Err(SessionError::Scan(format!(
+                        "目标「{}」的扫描范围内没有采样点，请放宽范围或减小间隔",
+                        target.name
+                    )));
                 }
                 let (factory, engine, template_fingerprint) =
                     build_detector_factory(&target, &video, project_dir.as_deref(), config, pw, ph, intra)?;
@@ -409,7 +418,7 @@ impl Session {
                     ScanOutcome::Cancelled { scanned_until, partial } => (partial, true, scanned_until),
                 };
                 scale_fused_segments(&mut fused, sx, sy);
-                built.push((tid.clone(), to_segments(tid, &fused, engine), cancelled, replace_end));
+                built.push((tid.clone(), to_segments(tid, &fused, engine), cancelled, start, replace_end));
                 if cancelled {
                     // 已取消：保留当前目标的局部结果，未开始的目标不再处理。
                     stopped = true;
@@ -420,7 +429,7 @@ impl Session {
         };
 
         let mut summary = ScanSummary { cache_warning, ..Default::default() };
-        for (tid, segments, cancelled, replace_end) in built {
+        for (tid, segments, cancelled, start, replace_end) in built {
             summary.segments += segments.len();
             summary.cancelled |= cancelled;
             summary.scanned_until = summary.scanned_until.max(replace_end);
@@ -714,7 +723,7 @@ mod tests {
             threshold: 0.6,
             roi: None,
             style: Style { kind: MaskKind::Mosaic, strength: 0.6, padding: 4, feather: true, motion_pad: false },
-            enabled: true,
+            enabled: true, scan_start: 0.0, scan_end: None,
         });
         let path = dir.join("demo.maskproj");
         (p, path)

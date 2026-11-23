@@ -171,22 +171,13 @@ export async function addManualSegment(
 }
 
 export interface ScanOptionsInput {
-  /** 扫描起点（秒），缺省为 0。 */
-  start?: number;
-  /** 扫描终点（秒），缺省或 null 表示扫到视频末尾。 */
-  end?: number | null;
-  /** 检测线程数，缺省由后端决定（4）。 */
+  /** 检测线程数，缺省由后端决定（4）。每个目标的扫描范围保存在目标上，不在这里传。 */
   threads?: number;
 }
 
 export async function scanTargets(targetIds: string[], options: ScanOptionsInput = {}): Promise<ScanDone> {
   requireDesktop();
-  return invoke<ScanDone>('scan_targets', {
-    targetIds,
-    start: options.start ?? null,
-    end: options.end ?? null,
-    threads: options.threads ?? null,
-  });
+  return invoke<ScanDone>('scan_targets', { targetIds, threads: options.threads ?? null });
 }
 
 export async function cancelScan(): Promise<void> {

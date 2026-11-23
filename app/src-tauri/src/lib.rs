@@ -292,15 +292,13 @@ fn add_manual_segment(
 }
 
 /// 扫描目标。进度通过 `vf-scan-progress` 推送；完成后返回新快照与汇总。
-/// 扫描选中的目标。`start`/`end` 为视频内的秒数范围（缺省为整段），`threads` 为检测线程数（缺省 4）。
+/// 扫描选中的目标。每个目标按自己的扫描范围扫描；`threads` 为检测线程数（缺省 4）。
 #[tauri::command]
 async fn scan_targets(
     app: AppHandle,
     state: State<'_, AppState>,
     target_ids: Vec<String>,
     interval: Option<f64>,
-    start: Option<f64>,
-    end: Option<f64>,
     threads: Option<usize>,
 ) -> Result<ScanDone, String> {
     if state.scanning.swap(true, Ordering::SeqCst) {
@@ -323,8 +321,6 @@ async fn scan_targets(
     let opts = ScanOptions {
         interval: interval.unwrap_or(defaults.interval),
         threads: threads.unwrap_or(defaults.threads),
-        start: start.unwrap_or(defaults.start),
-        end,
     };
     let app_task = app.clone();
     let joined = tauri::async_runtime::spawn_blocking(move || {

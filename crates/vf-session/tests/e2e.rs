@@ -102,7 +102,7 @@ fn image_target(template: &Path) -> Target {
         threshold: 0.55,
         roi: None,
         style: Style { kind: MaskKind::Solid, strength: 1.0, padding: 0, feather: false, motion_pad: false },
-        enabled: true,
+        enabled: true, scan_start: 0.0, scan_end: None,
     }
 }
 
@@ -218,7 +218,7 @@ fn scan_honours_cancel_between_targets() {
             threshold: 0.6,
             roi: Some([10, 10, 50, 40]),
             style: Style { kind: MaskKind::Mosaic, strength: 0.6, padding: 4, feather: true, motion_pad: false },
-            enabled: true,
+            enabled: true, scan_start: 0.0, scan_end: None,
         })
         .expect("添加目标");
 

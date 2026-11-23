@@ -116,6 +116,12 @@ pub struct Target {
     pub style: Style,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    /// 该目标的扫描起点（秒），缺省 0。
+    #[serde(default)]
+    pub scan_start: f64,
+    /// 该目标的扫描终点（秒），缺省 `None` 表示扫到视频末尾。
+    #[serde(default)]
+    pub scan_end: Option<f64>,
 }
 
 /// 关键帧：某一时刻的四边形与置信度。
@@ -199,6 +205,8 @@ pub enum ProjectError {
     UnknownTarget { segment: String, target: String },
     #[error("检测段 {0} 的时间区间无效（t0 必须小于 t1，且均在视频时长内）")]
     BadRange(String),
+    #[error("目标 {0} 的扫描范围无效：起点须非负且小于终点，终点不得超过视频时长")]
+    BadScanRange(String),
     #[error("检测段 {segment} 的关键帧时间 {t} 不在区间内")]
     KeyframeOutOfRange { segment: String, t: f64 },
     #[error("目标 {0} 的阈值必须在 0.0..=1.0 之间")]
@@ -250,6 +258,14 @@ impl Project {
             }
             if !(0.0..=1.0).contains(&t.threshold) {
                 return Err(ProjectError::BadThreshold(t.id.clone()));
+            }
+            let bad_start = t.scan_start < 0.0;
+            let bad_end = t.scan_end.is_some_and(|e| e <= t.scan_start);
+            let past_video = duration.is_some_and(|d| {
+                t.scan_start >= d || t.scan_end.is_some_and(|e| e > d + 1e-9)
+            });
+            if bad_start || bad_end || past_video {
+                return Err(ProjectError::BadScanRange(t.id.clone()));
             }
             if !(0.0..=1.0).contains(&t.style.strength) {
                 return Err(ProjectError::BadStrength(t.id.clone()));
@@ -349,6 +365,8 @@ mod tests {
             roi: None,
             style: style(),
             enabled: true,
+            scan_start: 0.0,
+            scan_end: None,
         }
     }
 
@@ -427,6 +445,20 @@ mod tests {
         let mut p = project_with_video();
         p.targets[0].threshold = 1.5;
         assert!(matches!(p.validate(), Err(ProjectError::BadThreshold(_))));
+    }
+
+    #[test]
+    fn rejects_bad_target_scan_range() {
+        let mut p = project_with_video();
+        p.targets[0].scan_start = 5.0;
+        p.targets[0].scan_end = Some(3.0);
+        assert!(matches!(p.validate(), Err(ProjectError::BadScanRange(_))));
+
+        p.targets[0].scan_end = Some(300.0);
+        assert!(matches!(p.validate(), Err(ProjectError::BadScanRange(_))));
+
+        p.targets[0].scan_end = Some(20.0);
+        assert!(p.validate().is_ok());
     }
 
     #[test]

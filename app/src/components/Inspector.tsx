@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { MaskKind, Mode, Project, Style, Target } from '../domain/types';
-import { activeSegments } from '../domain/segments';
+import { activeSegments, formatTime } from '../domain/segments';
+import { parseScanRange, targetScanRange } from '../domain/scanRange';
 
 interface Props {
   project: Project;
@@ -186,6 +187,13 @@ export function Inspector(props: Props) {
           </div>
         )}
 
+        <ScanRangeField
+          target={t}
+          duration={project.video?.duration ?? 0}
+          disabled={busy}
+          onCommit={(start, end) => patch({ scan_start: start, scan_end: end })}
+        />
+
         <Range
           label="阈值"
           min={0.3}
@@ -253,6 +261,83 @@ export function Inspector(props: Props) {
         </label>
       </section>
     </aside>
+  );
+}
+
+interface ScanRangeFieldProps {
+  target: Target;
+  duration: number;
+  disabled?: boolean;
+  onCommit: (start: number, end: number | null) => void;
+}
+
+/** 当前目标自己的扫描范围。失焦或回车时校验并提交，只影响这一个目标。 */
+function ScanRangeField({ target, duration, disabled, onCommit }: ScanRangeFieldProps) {
+  const startText = target.scan_start > 0 ? String(target.scan_start) : '';
+  const endText = target.scan_end !== null ? String(target.scan_end) : '';
+  const [start, setStart] = useState(startText);
+  const [end, setEnd] = useState(endText);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setStart(startText);
+    setEnd(endText);
+    setError(null);
+  }, [startText, endText]);
+
+  const commit = () => {
+    const parsed = parseScanRange(start, end, duration);
+    if (typeof parsed === 'string') {
+      setError(parsed);
+      return;
+    }
+    setError(null);
+    if (parsed.start === target.scan_start && parsed.end === target.scan_end) return;
+    onCommit(parsed.start, parsed.end);
+  };
+
+  const shown = targetScanRange(target, duration);
+  const onEnter = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') e.currentTarget.blur();
+  };
+
+  return (
+    <div className="field">
+      <span>
+        扫描范围 <b>{formatTime(shown.start)} – {formatTime(shown.end)}</b>
+      </span>
+      <div className="scan-range-row">
+        <label>
+          起点（秒）
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={start}
+            placeholder="0"
+            disabled={disabled}
+            onChange={(e) => setStart(e.target.value)}
+            onBlur={commit}
+            onKeyDown={onEnter}
+          />
+        </label>
+        <label>
+          终点（秒）
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={end}
+            placeholder={duration > 0 ? duration.toFixed(1) : '末尾'}
+            disabled={disabled}
+            onChange={(e) => setEnd(e.target.value)}
+            onBlur={commit}
+            onKeyDown={onEnter}
+          />
+        </label>
+      </div>
+      {error && <div className="notice">{error}</div>}
+      <div className="muted small">只扫描这个目标在该时间段内的画面，留空终点表示到视频末尾。</div>
+    </div>
   );
 }
 

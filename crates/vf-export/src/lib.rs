@@ -295,7 +295,7 @@ mod tests {
             threshold: 0.6,
             roi: None,
             style,
-            enabled: true,
+            enabled: true, scan_start: 0.0, scan_end: None,
         });
         let a: Quad = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
         let mut s1 = seg_with(vec![(0.0, a)]);

@@ -10,7 +10,7 @@ import { ExportDialog, NewTargetDialog, type ExportOptions, type NewTargetInput 
 import * as api from './api';
 import type { BatchJob, ExportProgress, ScanProgress, Snapshot, ToolStatus } from './api';
 import { formatTime, nextPending } from './domain/segments';
-import { parseScanRange } from './domain/scanRange';
+import { targetScanRange } from './domain/scanRange';
 import type { Quad, Style, Target } from './domain/types';
 
 type Dialog = 'export' | 'newTarget' | null;
@@ -20,11 +20,8 @@ interface ScanState {
   targetId: string;
   index: number;
   total: number;
-  /** 当前扫描到的时刻（秒）。 */
+  /** 当前扫描到的时刻（秒）。进度条按该目标自己的扫描范围计算。 */
   t: number;
-  /** 本次扫描范围的起止（秒），进度条按此计算。 */
-  start: number;
-  end: number;
 }
 
 const PALETTE = ['#d1495b', '#2a9d8f', '#8e6bbf', '#e09f3e', '#457b9d', '#3d9970'];
@@ -55,9 +52,6 @@ export function App() {
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   /** 当前编辑器里的项目来自哪个队列任务；普通打开时为 null。 */
   const [openedJobId, setOpenedJobId] = useState<string | null>(null);
-  /** 扫描范围的输入文本（秒）。留空：起点为 0，终点为视频末尾。 */
-  const [scanStart, setScanStart] = useState('');
-  const [scanEnd, setScanEnd] = useState('');
   const [threads, setThreads] = useState<number>(loadThreads);
 
   useEffect(() => {
@@ -148,8 +142,6 @@ export function App() {
     setSelSeg(null);
     setRoiTarget(null);
     setCompare(false);
-    setScanStart('');
-    setScanEnd('');
   };
 
   const onOpenVideo = () =>
@@ -273,18 +265,24 @@ export function App() {
       setMessage('没有启用的目标');
       return;
     }
-    const range = parseScanRange(scanStart, scanEnd, dur);
-    if (typeof range === 'string') {
-      setMessage(range);
+    // 扫描范围属于各个目标，这里只检查每个目标自己的范围是否有效。
+    const invalid = targets.find((id) => {
+      const tg = project.targets.find((x) => x.id === id);
+      if (!tg) return false;
+      const r = targetScanRange(tg, dur);
+      return !(r.start < r.end);
+    });
+    if (invalid) {
+      const tg = project.targets.find((x) => x.id === invalid);
+      setMessage(`「${tg?.name ?? '目标'}」的扫描范围无效，请在检查器里修正`);
       return;
     }
-    const start = range.start;
-    const end = range.end ?? dur;
     setPlaying(false);
-    setScanState({ targetId: targets[0], index: 1, total: targets.length, t: start, start, end });
+    const first = project.targets.find((x) => x.id === targets[0]);
+    setScanState({ targetId: targets[0], index: 1, total: targets.length, t: first ? targetScanRange(first, dur).start : 0 });
     void withFeedback(async () => {
       try {
-        const res = await api.scanTargets(targets, { start, end: range.end, threads });
+        const res = await api.scanTargets(targets, { threads });
         setSnap(res.snapshot);
         const s = res.summary;
         if (s.cancelled) setMessage(`扫描已取消，已扫到 ${s.scanned_until.toFixed(1)} s`);
@@ -315,6 +313,8 @@ export function App() {
         roi: null,
         style: { kind: 'mosaic', strength: 0.6, padding: 6, feather: true, motion_pad: true },
         enabled: true,
+        scan_start: 0,
+        scan_end: null,
       };
       const next = await apply(api.addTarget(target));
       if (!next) return;
@@ -443,6 +443,9 @@ export function App() {
   });
 
   const pendingCount = project?.segments.filter((s) => s.status === 'pending' || s.status === 'low').length ?? 0;
+  // 进度条显示的是当前正在扫描的目标自己的范围
+  const scanTarget = scanState ? project?.targets.find((x) => x.id === scanState.targetId) : undefined;
+  const scanRange = scanTarget ? targetScanRange(scanTarget, dur) : { start: 0, end: dur };
   const desktop = api.isDesktop();
   const scanName = scanState ? project?.targets.find((t) => t.id === scanState.targetId)?.name ?? '目标' : '';
 
@@ -545,10 +548,6 @@ export function App() {
               onToggleTarget={(id, enabled) => patchTarget(id, { enabled })}
               onNewTarget={() => setDialog('newTarget')}
               onScanAll={() => runScan(project.targets.filter((t) => t.enabled).map((t) => t.id))}
-              scanStart={scanStart}
-              scanEnd={scanEnd}
-              onScanStartChange={setScanStart}
-              onScanEndChange={setScanEnd}
               threads={threads}
               onThreadsChange={setThreads}
             />
@@ -639,16 +638,16 @@ export function App() {
             <b>
               扫描「{scanName}」{scanState.total > 1 ? ` ${scanState.index}/${scanState.total}` : ''}
             </b>
-            <span>{percent(scanState.t - scanState.start, scanState.end - scanState.start)}</span>
+            <span>{percent(scanState.t - scanRange.start, scanRange.end - scanRange.start)}</span>
           </div>
           <button className="sm ghost" onClick={() => void api.cancelScan()}>
             取消
           </button>
           <div className="bar">
-            <i style={{ width: percent(scanState.t - scanState.start, scanState.end - scanState.start) }} />
+            <i style={{ width: percent(scanState.t - scanRange.start, scanRange.end - scanRange.start) }} />
           </div>
           <div className="muted small">
-            {scanState.t.toFixed(1)} / {scanState.end.toFixed(1)} s（范围 {scanState.start.toFixed(1)} 起）
+            {scanState.t.toFixed(1)} s，本目标范围 {scanRange.start.toFixed(1)} – {scanRange.end.toFixed(1)} s
           </div>
         </div>
       )}

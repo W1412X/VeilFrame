@@ -50,6 +50,10 @@ export interface Target {
   roi: Roi;
   style: Style;
   enabled: boolean;
+  /** 该目标的扫描起点（秒）。 */
+  scan_start: number;
+  /** 该目标的扫描终点（秒）；null 表示扫到视频末尾。 */
+  scan_end: number | null;
 }
 
 export interface Keyframe {

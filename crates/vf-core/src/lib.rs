@@ -399,7 +399,7 @@ mod tests {
             threshold: 0.6,
             roi: None,
             style: Style { kind: MaskKind::Mosaic, strength: 0.7, padding: 8, feather: true, motion_pad: true },
-            enabled: true,
+            enabled: true, scan_start: 0.0, scan_end: None,
         });
         p.segments.push(Segment {
             id: "s1".into(),

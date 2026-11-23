@@ -7,6 +7,16 @@ export interface ScanRange {
   end: number | null;
 }
 
+/** 目标自己的扫描范围（秒），终点已截断到视频时长。与后端 `target_range` 一致。 */
+export function targetScanRange(
+  target: { scan_start: number; scan_end: number | null },
+  duration: number,
+): { start: number; end: number } {
+  const start = Math.min(Math.max(target.scan_start, 0), duration);
+  const end = Math.min(target.scan_end ?? duration, duration);
+  return { start, end };
+}
+
 /**
  * 解析起点与终点输入。起点留空视为 0，终点留空视为视频末尾。
  * 终点超过视频时长时截断到视频末尾。

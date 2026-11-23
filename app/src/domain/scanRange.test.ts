@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseScanRange } from './scanRange';
+import { parseScanRange, targetScanRange } from './scanRange';
+
+describe('targetScanRange', () => {
+  it('缺省为整段视频，终点超出时长时截断', () => {
+    expect(targetScanRange({ scan_start: 0, scan_end: null }, 60)).toEqual({ start: 0, end: 60 });
+    expect(targetScanRange({ scan_start: 5, scan_end: 90 }, 60)).toEqual({ start: 5, end: 60 });
+  });
+});
 
 describe('parseScanRange', () => {
   it('两项都留空表示整段视频', () => {
