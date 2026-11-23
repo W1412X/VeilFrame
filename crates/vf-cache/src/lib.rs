@@ -55,6 +55,12 @@ impl PerceptualCache {
                  payload TEXT NOT NULL,
                  PRIMARY KEY (ns, frame)
              );
+             CREATE TABLE IF NOT EXISTS ocr_frames (
+                 ns TEXT NOT NULL,
+                 frame INTEGER NOT NULL,
+                 payload TEXT NOT NULL,
+                 PRIMARY KEY (ns, frame)
+             );
              CREATE TABLE IF NOT EXISTS scene_cuts (
                  video_hash TEXT NOT NULL,
                  t REAL NOT NULL,
@@ -97,6 +103,44 @@ impl PerceptualCache {
         let n: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM frame_detections WHERE ns = ?1",
             params![ns.as_str()],
+            |row| row.get(0),
+        )?;
+        Ok(n as u64)
+    }
+
+    /// 写入（或覆盖）某一帧的 OCR 文字行。OCR 结果与匹配规则无关，可被任意文本目标复用。
+    pub fn put_ocr_frame<T: serde::Serialize>(&self, ns: &Namespace, frame: u64, lines: &[T]) -> Result<()> {
+        let payload = serde_json::to_string(lines).map_err(|e| CacheError::Corrupt(e.to_string()))?;
+        self.conn.execute(
+            "INSERT OR REPLACE INTO ocr_frames (ns, frame, payload) VALUES (?1, ?2, ?3)",
+            params![ns.as_str(), frame as i64, payload],
+        )?;
+        Ok(())
+    }
+
+    /// 读取某一帧的 OCR 文字行。`None` 表示该帧尚未 OCR；空 `Vec` 表示该帧已 OCR 且没有文字。
+    pub fn get_ocr_frame<T: serde::de::DeserializeOwned>(&self, ns: &Namespace, frame: u64) -> Result<Option<Vec<T>>> {
+        let payload: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT payload FROM ocr_frames WHERE ns = ?1 AND frame = ?2",
+                params![ns.as_str(), frame as i64],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match payload {
+            None => Ok(None),
+            Some(text) => serde_json::from_str(&text)
+                .map(Some)
+                .map_err(|e| CacheError::Corrupt(e.to_string())),
+        }
+    }
+
+    /// 命名空间内，闭区间 `[lo, hi]` 中已缓存的 OCR 帧数。等于区间长度时表示完全覆盖。
+    pub fn ocr_frame_count_in(&self, ns: &Namespace, lo: u64, hi: u64) -> Result<u64> {
+        let n: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM ocr_frames WHERE ns = ?1 AND frame BETWEEN ?2 AND ?3",
+            params![ns.as_str(), lo as i64, hi as i64],
             |row| row.get(0),
         )?;
         Ok(n as u64)
@@ -193,5 +237,33 @@ mod tests {
             )
             .unwrap();
         assert!(matches!(cache.get_frame(&ns, 1), Err(CacheError::Corrupt(_))));
+    }
+}
+
+#[cfg(test)]
+mod ocr_tests {
+    use super::*;
+
+    #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+    struct Line {
+        text: String,
+    }
+
+    #[test]
+    fn ocr_frames_round_trip_and_count_in_range() {
+        let cache = PerceptualCache::open_in_memory().unwrap();
+        let ns = Namespace::new("h", "ocr-ppv5-1", "p");
+        let one = vec![Line { text: "a".into() }];
+        let empty: Vec<Line> = Vec::new();
+        cache.put_ocr_frame(&ns, 0, one.as_slice()).unwrap();
+        cache.put_ocr_frame(&ns, 2, empty.as_slice()).unwrap();
+        assert_eq!(cache.get_ocr_frame::<Line>(&ns, 0).unwrap(), Some(one));
+        // 空结果是有效命中：该帧已 OCR，只是没有文字
+        assert_eq!(cache.get_ocr_frame::<Line>(&ns, 2).unwrap(), Some(Vec::new()));
+        assert_eq!(cache.get_ocr_frame::<Line>(&ns, 1).unwrap(), None);
+        assert_eq!(cache.ocr_frame_count_in(&ns, 0, 2).unwrap(), 2);
+        assert_eq!(cache.ocr_frame_count_in(&ns, 1, 1).unwrap(), 0);
+        let other = Namespace::new("h", "ocr-ppv5-1", "p2");
+        assert_eq!(cache.ocr_frame_count_in(&other, 0, 2).unwrap(), 0);
     }
 }

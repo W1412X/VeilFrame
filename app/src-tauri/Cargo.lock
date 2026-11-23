@@ -4253,6 +4253,7 @@ version = "0.2.2"
 dependencies = [
  "blake3",
  "rusqlite",
+ "serde",
  "serde_json",
  "thiserror 2.0.21",
  "vf-fusion",
@@ -4384,6 +4385,7 @@ name = "vf-text"
 version = "0.2.2"
 dependencies = [
  "regex",
+ "serde",
  "thiserror 2.0.21",
  "vf-project",
 ]

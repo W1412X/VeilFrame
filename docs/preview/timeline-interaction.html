@@ -103,6 +103,7 @@
             <div class="tl-ph" id="tlPh"><div class="tl-knob"></div></div>
             <div class="tl-guide" id="tlGuide" style="display:none"></div>
             <div class="tl-tip" id="tlTip" style="display:none"></div>
+            <canvas class="tl-thumb" id="tlThumb" width="160" height="90" style="display:none"></canvas>
           </div>
         </div>
 
@@ -129,6 +130,7 @@
         <li>总览条：拖动蓝框平移，拖动两端改变缩放，点击其他位置跳转。</li>
         <li>「只看待确认」只显示待确认和低置信段。「下一待确认」跳到下一段。</li>
         <li>选中段后，信息条显示范围、状态和置信度，可以接受、否决或放大到该段。</li>
+        <li>悬停或擦洗时，上方显示该时刻的缩略图。应用中由隐藏的视频解码取帧，本页用色块代替。</li>
       </ul>
     </div>
 
@@ -141,7 +143,7 @@
         <li><kbd>Enter</kbd> 接受选中段；<kbd>Delete</kbd> / <kbd>Backspace</kbd> 否决选中段</li>
         <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> 撤销，<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> 重做（本页只演示接受和否决的撤销）</li>
         <li><kbd>\</kbd> 切换原画对比</li>
-        <li><span class="k">未实现：</span>+ / − / 0 缩放键，Home / End</li>
+        <li><kbd>+</kbd> / <kbd>-</kbd> 缩放时间轴，<kbd>0</kbd> 适应全部，<kbd>Home</kbd> / <kbd>End</kbd> 跳到首尾（焦点在输入框或带 Ctrl 等组合键时不生效）</li>
       </ul>
     </div>
 
@@ -348,9 +350,11 @@
   }
 
   function renderHover() {
+    const thumb = $('tlThumb');
     if (!S.hover) {
       guide.style.display = 'none';
       tip.style.display = 'none';
+      thumb.style.display = 'none';
       return;
     }
     guide.style.display = 'block';
@@ -358,6 +362,18 @@
     tip.style.display = 'block';
     tip.style.left = S.hover.x + 'px';
     tip.textContent = formatTime(S.hover.t);
+    // 缩略图：应用中为视频帧，这里用色块与时间文字代替
+    const c = thumb.getContext('2d');
+    const g = c.createLinearGradient(0, 0, 160, 90);
+    g.addColorStop(0, '#2c3644');
+    g.addColorStop(1, '#1d2027');
+    c.fillStyle = g;
+    c.fillRect(0, 0, 160, 90);
+    c.fillStyle = '#aab1bd';
+    c.font = '12px sans-serif';
+    c.fillText(formatTime(S.hover.t), 10, 46);
+    thumb.style.display = 'block';
+    thumb.style.left = S.hover.x + 'px';
   }
 
   function updatePlayhead() {
@@ -519,6 +535,10 @@
   scroller.addEventListener('pointermove', (e) => {
     if (S.scrubbing) {
       scrubTo(e.clientX);
+      const r0 = wrap.getBoundingClientRect();
+      const x0 = Math.max(LABEL_W, e.clientX - r0.left);
+      S.hover = { x: x0, t: clamp((x0 - LABEL_W) / geom().pps, 0, DUR) };
+      renderHover();
       return;
     }
     const r = wrap.getBoundingClientRect();
@@ -660,6 +680,12 @@
       case 'Delete': e.preventDefault(); if (S.sel) applyStatus(S.sel, 'rejected'); return;
       case '\\': S.compare = !S.compare; updatePlayhead(); return;
     }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (k === '+' || k === '=') { zoomBy(1.5); return; }
+    if (k === '-' || k === '_') { zoomBy(1 / 1.5); return; }
+    if (k === '0') { zoomFit(); return; }
+    if (k === 'Home') { seek(0); return; }
+    if (k === 'End') { seek(DUR); return; }
     if (key === 'f') {
       const n = nextPending(S.t);
       if (n) { selectSeg(n.id); seek(n.t0); }

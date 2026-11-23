@@ -16,11 +16,12 @@ use vf_media::stream::FfmpegPaths;
 use vf_media::{sampled_content_hash, FfprobeBackend, MediaBackend};
 use vf_ocr::PpOcr;
 use vf_pipeline::{
-    sample_window, scale_fused_segments, to_segments, Detector, FfmpegFrameSource, MultiDetector, NccDetector,
-    RoiDetector, ScanConfig, ScanOutcome, SiftDetector, TextDetector, ThresholdDetector,
+    cached_ocr_frames, fuse_frames, match_lines, run_frames, sample_window, scale_fused_segments, to_segments, Detector,
+    FfmpegFrameSource, FrameStore, FrameWorker, MultiDetector, NccDetector, OcrStore, OcrWorker, RoiDetector,
+    ScanConfig, ScanOutcome, SiftDetector, ThresholdDetector,
 };
 use vf_project::{Engine, Keyframe, Mode, Project, Quad, Segment, SegmentStatus, Source, Target, TargetKind, TextMatchMode, Video};
-use vf_text::{MatchMode, TextQuery};
+use vf_text::{MatchMode, OcrLine, TextQuery};
 use vf_vision::ncc::NccTemplate;
 use vf_vision::sift::SiftMatcher;
 
@@ -152,6 +153,10 @@ pub struct ScanSummary {
     pub segments: usize,
     /// 感知缓存不可用时的说明（扫描仍会继续，只是不缓存）。
     pub cache_warning: Option<String>,
+    /// 文本目标从 OCR 缓存直接读取的帧数（这些帧不需要解码视频）。
+    pub reused_frames: u64,
+    /// 文本目标新做 OCR 的帧数。
+    pub computed_frames: u64,
 }
 
 /// 一个已打开的项目及其运行时资源（感知缓存、OCR 会话按需加载）。
@@ -328,15 +333,15 @@ impl Session {
         let (sx, sy) = (video.width as f64 / pw as f64, video.height as f64 / ph as f64);
         let cache_warning = self.ensure_cache();
         let project_dir = self.project_path.as_deref().and_then(Path::parent).map(Path::to_path_buf);
-        let intra = intra_op_threads(threads);
-
-        let (built, cache_warning, stopped) = {
+        let (built, cache_warning, stopped, reused_total, computed_total) = {
             let Session { editor, config, cache, .. } = self;
             let project = editor.project();
             // 每个条目为 (目标, 新段, 是否取消, 替换范围起点, 替换范围终点)。
             let mut built: Vec<(String, Vec<Segment>, bool, f64, f64)> = Vec::new();
             let total = target_ids.len();
             let mut stopped = false;
+            let mut reused_total = 0u64;
+            let mut computed_total = 0u64;
 
             for (idx, tid) in target_ids.iter().enumerate() {
                 if cancel.load(Ordering::Relaxed) {
@@ -364,6 +369,38 @@ impl Session {
                     built.push((tid.clone(), vec![region_segment(&target, &video, start, end)], false, start, end));
                     continue;
                 }
+                if target.kind == TargetKind::Text {
+                    // 文本目标走 OCR 缓存：缓存完整时不解码视频，只在缓存上重新匹配。
+                    let out = scan_text_target(
+                        &target,
+                        &video,
+                        config,
+                        cache.as_ref(),
+                        (pw, ph),
+                        interval,
+                        threads,
+                        cancel,
+                        (start, end),
+                        |t| {
+                            progress(ScanProgress {
+                                target_index: idx,
+                                target_total: total,
+                                target_id: tid.clone(),
+                                t,
+                                duration: video.duration,
+                            })
+                        },
+                    )?;
+                    reused_total += out.reused;
+                    computed_total += out.computed;
+                    let cancelled = out.cancelled;
+                    built.push((tid.clone(), out.segments, cancelled, start, out.replace_end));
+                    if cancelled {
+                        stopped = true;
+                        break;
+                    }
+                    continue;
+                }
                 let (window_start, window_len) = sample_window(start, end, interval);
                 if window_len <= 0.0 {
                     return Err(SessionError::Scan(format!(
@@ -372,7 +409,7 @@ impl Session {
                     )));
                 }
                 let (factory, engine, template_fingerprint) =
-                    build_detector_factory(&target, &video, project_dir.as_deref(), config, pw, ph, intra)?;
+                    build_detector_factory(&target, &video, project_dir.as_deref(), pw, ph)?;
 
                 // 缓存参数不含扫描范围：缓存键是绝对采样序号，同一帧在任何范围内结果相同。
                 let params = serde_json::json!({
@@ -425,10 +462,15 @@ impl Session {
                     break;
                 }
             }
-            (built, cache_warning, stopped)
+            (built, cache_warning, stopped, reused_total, computed_total)
         };
 
-        let mut summary = ScanSummary { cache_warning, ..Default::default() };
+        let mut summary = ScanSummary {
+            cache_warning,
+            reused_frames: reused_total,
+            computed_frames: computed_total,
+            ..Default::default()
+        };
         for (tid, segments, cancelled, start, replace_end) in built {
             summary.segments += segments.len();
             summary.cancelled |= cancelled;
@@ -509,6 +551,124 @@ fn region_segment(target: &Target, video: &Video, start: f64, end: f64) -> Segme
     }
 }
 
+/// 文本目标的扫描结果。`segments` 已映射到源视频坐标。
+struct TextOutcome {
+    segments: Vec<Segment>,
+    cancelled: bool,
+    /// 替换范围的终点：完整扫描时为扫描终点，取消时为最后处理过的时刻。
+    replace_end: f64,
+    reused: u64,
+    computed: u64,
+}
+
+/// 文本目标扫描。
+///
+/// OCR 结果按（视频内容、代理分辨率、采样间隔、模型文件）缓存，每帧保存全部文字行。
+/// 模式串、匹配方式、阈值、区域、名称都不参与缓存键，因此改这些设置时只在缓存上重新匹配，
+/// 不需要重新解码或 OCR。只有扫描范围内存在未缓存的帧时，才会解码视频并运行 OCR。
+fn scan_text_target(
+    target: &Target,
+    video: &Video,
+    config: &SessionConfig,
+    cache: Option<&PerceptualCache>,
+    (pw, ph): (u32, u32),
+    interval: f64,
+    threads: usize,
+    cancel: &AtomicBool,
+    (start, end): (f64, f64),
+    mut progress: impl FnMut(f64),
+) -> Result<TextOutcome, SessionError> {
+    let query = text_query(target)?;
+    // 与图像路径一致：范围内没有采样点时报错，而不是把该范围的旧段清空。
+    if sample_window(start, end, interval).1 <= 0.0 {
+        return Err(SessionError::Scan(format!(
+            "目标「{}」的扫描范围内没有采样点，请放宽范围或减小间隔",
+            target.name
+        )));
+    }
+    let (sx, sy) = (pw as f64 / video.width.max(1) as f64, ph as f64 / video.height.max(1) as f64);
+    // 区域以源视频像素保存，匹配时换算到代理分辨率。OCR 对整帧进行，区域只在匹配时过滤。
+    let roi = target.roi.map(|r| (r[0] as f64 * sx, r[1] as f64 * sy, r[2] as f64 * sx, r[3] as f64 * sy));
+    let ns = ocr_namespace(&video.content_hash, pw, ph, interval, &config.ocr)?;
+
+    let cached = match cache {
+        Some(c) => cached_ocr_frames(c, &ns, start, end, interval).map_err(|e| SessionError::Scan(e.to_string()))?,
+        None => None,
+    };
+    let (frames, cancelled, replace_end, reused, computed) = match cached {
+        Some(frames) => {
+            let n = frames.len() as u64;
+            (frames, false, end, n, 0)
+        }
+        None => {
+            let (window_start, window_len) = sample_window(start, end, interval);
+            let mut source = FfmpegFrameSource::open(
+                &config.ffmpeg.ffmpeg,
+                Path::new(&video.path),
+                1.0 / interval,
+                Some((pw as usize, ph as usize)),
+                Some((window_start, window_len)),
+            )
+            .map_err(SessionError::Scan)?;
+            let factory = ocr_worker_factory(config.ocr.clone(), intra_op_threads(threads));
+            let cfg = ScanConfig { start, end, interval, threads, fusion: Default::default(), cache: None };
+            let store = cache.map(|c| OcrStore { cache: c, ns: &ns });
+            let store_ref = store.as_ref().map(|s| s as &dyn FrameStore<Vec<OcrLine>>);
+            let run = run_frames(&mut source, factory, &cfg, store_ref, cancel, &mut progress)
+                .map_err(|e| SessionError::Scan(e.to_string()))?;
+            let replace_end = if run.cancelled { run.scanned_until } else { end };
+            (run.frames, run.cancelled, replace_end, run.reused, run.computed)
+        }
+    };
+
+    let per_frame: Vec<_> = frames
+        .into_iter()
+        .map(|(t, lines)| (t, match_lines(&lines, &query, roi, target.threshold)))
+        .collect();
+    let mut fused = fuse_frames(per_frame, &Default::default(), interval, end, !cancelled);
+    scale_fused_segments(&mut fused, sx, sy);
+    Ok(TextOutcome {
+        segments: to_segments(&target.id, &fused, Engine::Ocr),
+        cancelled,
+        replace_end,
+        reused,
+        computed,
+    })
+}
+
+/// OCR 缓存的命名空间。只包含影响 OCR 输出的因素：视频内容、代理分辨率、采样间隔与模型文件。
+/// 运行时库（ort）不影响结果，因此不计入。
+fn ocr_namespace(video_hash: &str, pw: u32, ph: u32, interval: f64, ocr: &OcrModelPaths) -> Result<Namespace, SessionError> {
+    for p in [&ocr.ort_lib, &ocr.det, &ocr.rec, &ocr.dict] {
+        if !p.is_file() {
+            return Err(SessionError::Ocr(format!("文件不存在：{}", p.display())));
+        }
+    }
+    let params = serde_json::json!({
+        "proxy": [pw, ph],
+        "interval": interval,
+        "models": {
+            "det": file_fingerprint(&ocr.det)?,
+            "rec": file_fingerprint(&ocr.rec)?,
+            "dict": file_fingerprint(&ocr.dict)?,
+        },
+    })
+    .to_string();
+    Ok(Namespace::new(video_hash, engine_version(Engine::Ocr), &params))
+}
+
+/// 每个检测线程调用一次，在本线程内加载自己的 OCR 会话。
+fn ocr_worker_factory(
+    paths: OcrModelPaths,
+    intra_threads: Option<usize>,
+) -> impl Fn() -> Result<Box<dyn FrameWorker<Vec<OcrLine>>>, String> + Sync {
+    move || {
+        let ocr = PpOcr::load(&paths.ort_lib, &paths.det, &paths.rec, &paths.dict, intra_threads)
+            .map_err(|e| e.to_string())?;
+        Ok(Box::new(OcrWorker(ocr)) as Box<dyn FrameWorker<Vec<OcrLine>>>)
+    }
+}
+
 fn engine_version(engine: Engine) -> &'static str {
     match engine {
         Engine::Ocr => "ocr-ppv5-1",
@@ -546,34 +706,16 @@ type DetectorFactory = Box<dyn Fn() -> Result<Box<dyn Detector>, String> + Sync>
 
 /// 构造某目标的检测器工厂（含模板变体组合、ROI、阈值），并返回实际使用的引擎与模板指纹。
 ///
-/// 模型文件与模板在主线程做一次预检查，错误尽早返回；工厂内部再按线程加载。
-/// `intra_threads` 为每个 OCR 会话内部使用的线程数。
+/// 模板在主线程做一次预检查，错误尽早返回；工厂内部再按线程加载。文本目标不经过这里。
 fn build_detector_factory(
     target: &Target,
     video: &Video,
     project_dir: Option<&Path>,
-    config: &SessionConfig,
     pw: u32,
     ph: u32,
-    intra_threads: Option<usize>,
 ) -> Result<(DetectorFactory, Engine, String), SessionError> {
     let (sx, sy) = (pw as f64 / video.width.max(1) as f64, ph as f64 / video.height.max(1) as f64);
     let (inner, engine, fingerprint): (DetectorFactory, Engine, String) = match target.kind {
-        TargetKind::Text => {
-            let query = text_query(target)?;
-            let paths = config.ocr.clone();
-            for p in [&paths.ort_lib, &paths.det, &paths.rec, &paths.dict] {
-                if !p.is_file() {
-                    return Err(SessionError::Ocr(format!("文件不存在：{}", p.display())));
-                }
-            }
-            let factory = move || -> Result<Box<dyn Detector>, String> {
-                let ocr = PpOcr::load(&paths.ort_lib, &paths.det, &paths.rec, &paths.dict, intra_threads)
-                    .map_err(|e| e.to_string())?;
-                Ok(Box::new(TextDetector { ocr, query: query.clone() }))
-            };
-            (Box::new(factory), Engine::Ocr, String::new())
-        }
         TargetKind::Image => {
             if target.variants.is_empty() {
                 return Err(SessionError::MissingTemplate(target.id.clone()));
@@ -623,8 +765,8 @@ fn build_detector_factory(
             };
             (Box::new(factory), engine, hashes.join(","))
         }
-        TargetKind::Region => {
-            return Err(SessionError::Scan("固定区域不参与检测".into()));
+        TargetKind::Text | TargetKind::Region => {
+            return Err(SessionError::Scan("该类目标不走图像检测路径".into()));
         }
     };
 
@@ -784,6 +926,22 @@ mod tests {
         let proj = s.project();
         assert_eq!(proj.segment("s1").unwrap().status, SegmentStatus::Rejected);
         assert!((proj.target("t1").unwrap().threshold - 0.61).abs() < 1e-9);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn text_range_without_sample_point_is_an_error() {
+        let dir = tmp_dir("empty-range");
+        let (mut p, _) = project_with_text_target(&dir);
+        p.targets[0].scan_start = 5.1;
+        p.targets[0].scan_end = Some(5.2);
+        let config = SessionConfig { cache_db: dir.join("cache.db"), ..Default::default() };
+        let mut s = Session::new(p, None, config);
+        let cancel = AtomicBool::new(false);
+        // 间隔 0.5 s 时，5.1–5.2 s 之间没有采样点；应报错而不是静默清空该范围
+        let opts = ScanOptions { interval: 0.5, threads: 1 };
+        let err = s.scan_targets(&["t1".into()], opts, &cancel, |_| {}).unwrap_err();
+        assert!(matches!(err, SessionError::Scan(_)));
         std::fs::remove_dir_all(dir).unwrap();
     }
 

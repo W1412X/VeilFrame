@@ -10,6 +10,7 @@ import {
 } from 'react';
 import type { Project } from '../domain/types';
 import { formatTime, nextPending } from '../domain/segments';
+import { assetUrl } from '../api';
 
 // 时间轴交互说明（与 docs/preview/timeline-interaction.html 一致）：
 // - 标尺与播放头把手是拖动入口；按下即擦洗，拖动时显示时间气泡；轨道空白处按下也会跳转。
@@ -59,6 +60,13 @@ export function Timeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const ovRef = useRef<HTMLDivElement>(null);
+  // 悬停缩略图：隐藏的 video 负责定位与解码，canvas 显示取到的画面。
+  const thumbVideoRef = useRef<HTMLVideoElement>(null);
+  const thumbCanvasRef = useRef<HTMLCanvasElement>(null);
+  const thumbPending = useRef<number | null>(null);
+  const thumbBusy = useRef(false);
+  const [thumbReady, setThumbReady] = useState(false);
+  const lastHoverT = useRef(0);
 
   const [width, setWidth] = useState(0);
   const [zoom, setZoom] = useState(1);
@@ -94,6 +102,96 @@ export function Timeline({
       ro?.disconnect();
       window.removeEventListener('resize', update);
     };
+  }, []);
+
+  // 缩略图：seek 进行中只记住最新的悬停时刻，本次完成后再取，避免频繁 seek 卡顿。
+  function drawThumb() {
+    const v = thumbVideoRef.current;
+    const c = thumbCanvasRef.current;
+    if (!v || !c || !v.videoWidth) return;
+    c.height = Math.round((c.width * v.videoHeight) / v.videoWidth);
+    c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
+    setThumbReady(true);
+  }
+  function requestThumb(t: number) {
+    const v = thumbVideoRef.current;
+    if (!v) return;
+    if (thumbBusy.current) {
+      thumbPending.current = t;
+      return;
+    }
+    if (v.readyState >= 2 && Math.abs(v.currentTime - t) < 0.02) {
+      drawThumb();
+      return;
+    }
+    thumbBusy.current = true;
+    v.currentTime = t;
+  }
+  const videoPath = project.video?.path;
+  useEffect(() => {
+    const v = thumbVideoRef.current;
+    if (!v) return;
+    const onSeeked = () => {
+      drawThumb();
+      thumbBusy.current = false;
+      const next = thumbPending.current;
+      thumbPending.current = null;
+      if (next !== null) requestThumb(next);
+    };
+    // 元数据加载完成时，取最近一次悬停的时刻，而不是固定取首帧
+    const onMeta = () => requestThumb(lastHoverT.current);
+    v.addEventListener('seeked', onSeeked);
+    v.addEventListener('loadedmetadata', onMeta);
+    return () => {
+      v.removeEventListener('seeked', onSeeked);
+      v.removeEventListener('loadedmetadata', onMeta);
+    };
+    // 绘制与请求只读取 ref，依赖视频路径即可
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoPath]);
+  useEffect(() => {
+    if (!hover) return;
+    lastHoverT.current = hover.t;
+    requestThumb(hover.t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hover?.t]);
+
+  // +/- 缩放、0 适应、Home/End 跳到首尾。键盘处理函数每次渲染更新，监听器只注册一次。
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyRef.current = (e: KeyboardEvent) => {
+    // 带修饰键的组合（如 Ctrl+= 网页缩放）交给浏览器处理
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = e.target as HTMLElement | null;
+    if (el && (el.matches('input, select, textarea') || el.isContentEditable)) return;
+    switch (e.key) {
+      case '+':
+      case '=':
+        e.preventDefault();
+        zoomBy(1.5);
+        return;
+      case '-':
+      case '_':
+        e.preventDefault();
+        zoomBy(1 / 1.5);
+        return;
+      case '0':
+        e.preventDefault();
+        zoomFit();
+        return;
+      case 'Home':
+        e.preventDefault();
+        onSeek(0);
+        return;
+      case 'End':
+        e.preventDefault();
+        onSeek(dur);
+        return;
+    }
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => keyRef.current(e);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // 缩放后需要改变滚动位置时，在 DOM 更新后应用
@@ -234,6 +332,12 @@ export function Timeline({
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     if (scrubbing) {
       scrubTo(e.clientX);
+      // 擦洗时同样显示时间与缩略图
+      const r = wrapRef.current?.getBoundingClientRect();
+      if (r) {
+        const x = Math.max(LABEL_W, e.clientX - r.left);
+        setHover({ x, t: clamp((x - LABEL_W) / pps, 0, dur) });
+      }
       return;
     }
     const r = wrapRef.current?.getBoundingClientRect();
@@ -420,8 +524,28 @@ export function Timeline({
               <div className="tl-tip" style={{ left: hover.x }}>{formatTime(hover.t)}</div>
             </>
           )}
+          {/* 始终挂载，便于异步绘制；仅在悬停且已有画面时显示 */}
+          <canvas
+            ref={thumbCanvasRef}
+            className="tl-thumb"
+            width={160}
+            height={90}
+            style={{ left: hover?.x ?? 0, display: hover && thumbReady ? 'block' : 'none' }}
+          />
+
         </div>
       </div>
+
+      {videoPath && (
+        <video
+          ref={thumbVideoRef}
+          className="tl-thumb-src"
+          src={assetUrl(videoPath)}
+          muted
+          preload="auto"
+          playsInline
+        />
+      )}
 
       {!playheadVisible && (
         <button className="tl-back" onClick={() => centerOn(time)} title="把播放头放回可视区域">

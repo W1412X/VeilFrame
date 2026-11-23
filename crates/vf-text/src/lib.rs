@@ -32,7 +32,7 @@ pub struct Hit {
 }
 
 /// OCR 识别出的一行文字。`quad` 为原图坐标下的四边形（左上、右上、右下、左下）。
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct OcrLine {
     pub quad: Quad,
     pub text: String,

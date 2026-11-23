@@ -51,6 +51,10 @@ export interface ScanProgress {
 export interface ScanSummary {
   cancelled: boolean;
   scanned_until: number;
+  /** 文本目标从 OCR 缓存直接读取的帧数（未解码视频）。 */
+  reused_frames: number;
+  /** 文本目标新做 OCR 的帧数。 */
+  computed_frames: number;
   segments: number;
   cache_warning: string | null;
 }

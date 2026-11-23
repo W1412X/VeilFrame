@@ -107,11 +107,12 @@ pub fn parse_ffprobe_json(json: &str) -> Result<VideoInfo, MediaError> {
         .or_else(|| video.r_frame_rate.as_deref().and_then(parse_rate))
         .unwrap_or(0.0);
 
-    let duration = out
-        .format
-        .as_ref()
-        .and_then(|f| f.duration.as_deref())
-        .or(video.duration.as_deref())
+    // 优先使用视频流自己的时长。容器时长取的是最长轨道，音轨比视频长时会多出几帧，
+    // 导出进度总数、时间轴终点都会偏大。
+    let duration = video
+        .duration
+        .as_deref()
+        .or(out.format.as_ref().and_then(|f| f.duration.as_deref()))
         .and_then(|d| d.parse::<f64>().ok())
         .unwrap_or(0.0);
 
@@ -184,6 +185,17 @@ mod tests {
         let info = parse_ffprobe_json(json).unwrap();
         assert!((info.duration - 10.0).abs() < 1e-9);
         assert!((info.fps - 25.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn prefers_video_stream_duration_over_container() {
+        // 音轨比视频长时，容器时长会偏大，应以视频流时长为准。
+        let json = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1920,"height":1080,
+            "avg_frame_rate":"30/1","duration":"60.000000"},
+            {"codec_type":"audio","duration":"60.033000"}],"format":{"duration":"60.033000"}}"#;
+        let info = parse_ffprobe_json(json).unwrap();
+        assert!((info.duration - 60.0).abs() < 1e-9);
+        assert_eq!((info.duration * info.fps).round() as u64, 1800);
     }
 
     #[test]

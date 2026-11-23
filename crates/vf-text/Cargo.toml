@@ -9,3 +9,4 @@ publish.workspace = true
 vf-project = { path = "../vf-project" }
 regex.workspace = true
 thiserror.workspace = true
+serde.workspace = true

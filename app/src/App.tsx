@@ -287,6 +287,8 @@ export function App() {
         const s = res.summary;
         if (s.cancelled) setMessage(`扫描已取消，已扫到 ${s.scanned_until.toFixed(1)} s`);
         else if (s.cache_warning) setMessage(`扫描完成，共 ${s.segments} 段；${s.cache_warning}`);
+        else if (s.reused_frames > 0 && s.computed_frames === 0)
+          setMessage(`扫描完成，共 ${s.segments} 段（使用 OCR 缓存，未重新识别）`);
         else setMessage(`扫描完成，共 ${s.segments} 段`);
       } finally {
         setScanState(null);
