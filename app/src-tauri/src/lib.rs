@@ -379,6 +379,7 @@ async fn export_video(
         codec: codec.unwrap_or_else(|| "libx264".into()),
         crf: crf.unwrap_or(18),
         include_pending: include_pending.unwrap_or(true),
+        ..Default::default()
     };
     let app_task = app.clone();
     let joined = tauri::async_runtime::spawn_blocking(move || {

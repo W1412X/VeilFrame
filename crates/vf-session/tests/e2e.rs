@@ -163,7 +163,7 @@ fn scan_and_export_synthetic_logo() {
     assert!((cy - 60.0).abs() < 12.0, "检出中心 y={cy}，期望 60");
 
     let output = fx.dir.join("masked.mp4");
-    let opts = ExportOptions { ffmpeg: fx.paths.clone(), codec: "libx264".into(), crf: 20, include_pending: true };
+    let opts = ExportOptions { ffmpeg: fx.paths.clone(), codec: "libx264".into(), crf: 20, include_pending: true, ..Default::default() };
     let mut exported = Vec::new();
     let report = session.export(&output, &opts, &cancel, |done, _| exported.push(done)).expect("导出");
     assert_eq!(report.frames, 20, "2 秒 × 10 fps");
