@@ -4222,7 +4222,7 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "veilframe"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "tauri",
@@ -4249,7 +4249,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vf-cache"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "blake3",
  "rusqlite",
@@ -4261,7 +4261,7 @@ dependencies = [
 
 [[package]]
 name = "vf-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "thiserror 2.0.21",
  "vf-project",
@@ -4269,7 +4269,7 @@ dependencies = [
 
 [[package]]
 name = "vf-export"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "thiserror 2.0.21",
@@ -4281,7 +4281,7 @@ dependencies = [
 
 [[package]]
 name = "vf-fusion"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "vf-project",
@@ -4289,7 +4289,7 @@ dependencies = [
 
 [[package]]
 name = "vf-image"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "thiserror 2.0.21",
@@ -4297,7 +4297,7 @@ dependencies = [
 
 [[package]]
 name = "vf-media"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "blake3",
  "serde",
@@ -4307,7 +4307,7 @@ dependencies = [
 
 [[package]]
 name = "vf-ocr"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "ort",
@@ -4319,7 +4319,7 @@ dependencies = [
 
 [[package]]
 name = "vf-pipeline"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "thiserror 2.0.21",
@@ -4334,7 +4334,7 @@ dependencies = [
 
 [[package]]
 name = "vf-project"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4343,14 +4343,14 @@ dependencies = [
 
 [[package]]
 name = "vf-queue"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "vf-render"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "thiserror 2.0.21",
@@ -4360,7 +4360,7 @@ dependencies = [
 
 [[package]]
 name = "vf-session"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "blake3",
  "opencv",
@@ -4381,7 +4381,7 @@ dependencies = [
 
 [[package]]
 name = "vf-text"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "regex",
  "thiserror 2.0.21",
@@ -4390,7 +4390,7 @@ dependencies = [
 
 [[package]]
 name = "vf-vision"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "opencv",
  "thiserror 2.0.21",
