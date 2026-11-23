@@ -1,5 +1,9 @@
 import type { Project } from '../domain/types';
 
+/** 线程数允许的范围，与后端 MAX_SCAN_THREADS 一致。 */
+export const MIN_THREADS = 1;
+export const MAX_THREADS = 16;
+
 interface Props {
   project: Project;
   selTarget: string | null;
@@ -9,10 +13,33 @@ interface Props {
   onToggleTarget: (id: string, enabled: boolean) => void;
   onNewTarget: () => void;
   onScanAll: () => void;
+  /** 扫描范围的输入文本（秒），留空分别表示 0 与视频末尾。 */
+  scanStart: string;
+  scanEnd: string;
+  onScanStartChange: (value: string) => void;
+  onScanEndChange: (value: string) => void;
+  threads: number;
+  onThreadsChange: (value: number) => void;
 }
 
-export function Sidebar({ project, selTarget, busy, scanningTargetId, onSelectTarget, onToggleTarget, onNewTarget, onScanAll }: Props) {
+export function Sidebar({
+  project,
+  selTarget,
+  busy,
+  scanningTargetId,
+  onSelectTarget,
+  onToggleTarget,
+  onNewTarget,
+  onScanAll,
+  scanStart,
+  scanEnd,
+  onScanStartChange,
+  onScanEndChange,
+  threads,
+  onThreadsChange,
+}: Props) {
   const enabled = project.targets.filter((t) => t.enabled).length;
+  const duration = project.video?.duration ?? 0;
   return (
     <aside className="sidebar">
       <div className="sec-row">
@@ -57,6 +84,52 @@ export function Sidebar({ project, selTarget, busy, scanningTargetId, onSelectTa
       <button className="sm" style={{ marginTop: 12 }} disabled={busy} onClick={onNewTarget}>
         + 新建目标
       </button>
+
+      <div className="sec" style={{ marginTop: 22 }}>
+        扫描设置
+      </div>
+      <div className="scan-settings">
+        <label>
+          起点（秒）
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={scanStart}
+            disabled={busy}
+            onChange={(e) => onScanStartChange(e.target.value)}
+          />
+        </label>
+        <label>
+          终点（秒）
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={scanEnd}
+            placeholder={duration > 0 ? duration.toFixed(1) : '末尾'}
+            disabled={busy}
+            onChange={(e) => onScanEndChange(e.target.value)}
+          />
+        </label>
+        <p className="muted small">终点留空表示扫到视频末尾。</p>
+        <label>
+          检测线程数
+          <input
+            type="number"
+            min={MIN_THREADS}
+            max={MAX_THREADS}
+            step={1}
+            value={threads}
+            disabled={busy}
+            onChange={(e) => {
+              const n = Math.round(Number(e.target.value));
+              if (Number.isFinite(n)) onThreadsChange(Math.min(MAX_THREADS, Math.max(MIN_THREADS, n)));
+            }}
+          />
+        </label>
+        <p className="muted small">默认 4。线程越多占用 CPU 越多。</p>
+      </div>
     </aside>
   );
 }

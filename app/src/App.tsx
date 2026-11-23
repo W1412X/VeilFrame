@@ -10,6 +10,7 @@ import { ExportDialog, NewTargetDialog, type ExportOptions, type NewTargetInput 
 import * as api from './api';
 import type { BatchJob, ExportProgress, ScanProgress, Snapshot, ToolStatus } from './api';
 import { formatTime, nextPending } from './domain/segments';
+import { parseScanRange } from './domain/scanRange';
 import type { Quad, Style, Target } from './domain/types';
 
 type Dialog = 'export' | 'newTarget' | null;
@@ -19,11 +20,21 @@ interface ScanState {
   targetId: string;
   index: number;
   total: number;
+  /** 当前扫描到的时刻（秒）。 */
   t: number;
-  duration: number;
+  /** 本次扫描范围的起止（秒），进度条按此计算。 */
+  start: number;
+  end: number;
 }
 
 const PALETTE = ['#d1495b', '#2a9d8f', '#8e6bbf', '#e09f3e', '#457b9d', '#3d9970'];
+const THREADS_KEY = 'vf.scanThreads';
+const DEFAULT_THREADS = 4;
+
+function loadThreads(): number {
+  const raw = Number(window.localStorage.getItem(THREADS_KEY));
+  return Number.isInteger(raw) && raw >= 1 && raw <= 16 ? raw : DEFAULT_THREADS;
+}
 
 export function App() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
@@ -44,6 +55,14 @@ export function App() {
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   /** 当前编辑器里的项目来自哪个队列任务；普通打开时为 null。 */
   const [openedJobId, setOpenedJobId] = useState<string | null>(null);
+  /** 扫描范围的输入文本（秒）。留空：起点为 0，终点为视频末尾。 */
+  const [scanStart, setScanStart] = useState('');
+  const [scanEnd, setScanEnd] = useState('');
+  const [threads, setThreads] = useState<number>(loadThreads);
+
+  useEffect(() => {
+    window.localStorage.setItem(THREADS_KEY, String(threads));
+  }, [threads]);
 
   const project = snap?.project ?? null;
   const dur = project?.video?.duration ?? 0;
@@ -89,7 +108,9 @@ export function App() {
     let unQueue: UnlistenFn | undefined;
     api
       .onScanProgress((p: ScanProgress) =>
-        setScanState({ targetId: p.target_id, index: p.target_index + 1, total: p.target_total, t: p.t, duration: p.duration }),
+        setScanState((prev) =>
+          prev && { ...prev, targetId: p.target_id, index: p.target_index + 1, total: p.target_total, t: p.t },
+        ),
       )
       .then((u) => (alive ? (unScan = u) : u()));
     api
@@ -127,6 +148,8 @@ export function App() {
     setSelSeg(null);
     setRoiTarget(null);
     setCompare(false);
+    setScanStart('');
+    setScanEnd('');
   };
 
   const onOpenVideo = () =>
@@ -250,11 +273,18 @@ export function App() {
       setMessage('没有启用的目标');
       return;
     }
+    const range = parseScanRange(scanStart, scanEnd, dur);
+    if (typeof range === 'string') {
+      setMessage(range);
+      return;
+    }
+    const start = range.start;
+    const end = range.end ?? dur;
     setPlaying(false);
-    setScanState({ targetId: targets[0], index: 1, total: targets.length, t: 0, duration: dur });
+    setScanState({ targetId: targets[0], index: 1, total: targets.length, t: start, start, end });
     void withFeedback(async () => {
       try {
-        const res = await api.scanTargets(targets);
+        const res = await api.scanTargets(targets, { start, end: range.end, threads });
         setSnap(res.snapshot);
         const s = res.summary;
         if (s.cancelled) setMessage(`扫描已取消，已扫到 ${s.scanned_until.toFixed(1)} s`);
@@ -515,6 +545,12 @@ export function App() {
               onToggleTarget={(id, enabled) => patchTarget(id, { enabled })}
               onNewTarget={() => setDialog('newTarget')}
               onScanAll={() => runScan(project.targets.filter((t) => t.enabled).map((t) => t.id))}
+              scanStart={scanStart}
+              scanEnd={scanEnd}
+              onScanStartChange={setScanStart}
+              onScanEndChange={setScanEnd}
+              threads={threads}
+              onThreadsChange={setThreads}
             />
 
             <section className="center">
@@ -603,16 +639,16 @@ export function App() {
             <b>
               扫描「{scanName}」{scanState.total > 1 ? ` ${scanState.index}/${scanState.total}` : ''}
             </b>
-            <span>{percent(scanState.t, scanState.duration)}</span>
+            <span>{percent(scanState.t - scanState.start, scanState.end - scanState.start)}</span>
           </div>
           <button className="sm ghost" onClick={() => void api.cancelScan()}>
             取消
           </button>
           <div className="bar">
-            <i style={{ width: percent(scanState.t, scanState.duration) }} />
+            <i style={{ width: percent(scanState.t - scanState.start, scanState.end - scanState.start) }} />
           </div>
           <div className="muted small">
-            {scanState.t.toFixed(1)} / {scanState.duration.toFixed(1)} s
+            {scanState.t.toFixed(1)} / {scanState.end.toFixed(1)} s（范围 {scanState.start.toFixed(1)} 起）
           </div>
         </div>
       )}

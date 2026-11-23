@@ -63,3 +63,10 @@ button.sm { padding: 3px 10px; font-size: 12px; }
   .body { grid-template-columns: 200px minmax(0, 1fr) 280px; }
   .path { max-width: 24vw; }
 }
+
+/* 侧栏扫描设置 */
+.scan-settings label {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--sub); margin: 8px 0;
+}
+.scan-settings input { width: 96px; }

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Project, Quad, Segment } from '../domain/types';
-import { activeSegments, pickKeyframe } from '../domain/segments';
+import { activeSegments } from '../domain/segments';
+import { quadAt } from '../domain/render';
 import { assetUrl } from '../api';
+import { EffectRenderer, type RenderItem } from './effectRenderer';
 
 interface Props {
   project: Project;
@@ -33,11 +35,34 @@ interface RectDrag {
   y1: number;
 }
 
-/** 画面预览：真实视频 + SVG 叠加。叠加层坐标即视频像素坐标。 */
+/**
+ * 当前时刻要打码的区域。四边形与运动速度按导出的同一套规则计算；正在拖动的段使用拖动中的四边形。
+ */
+function renderItems(project: Project, t: number, fps: number, drag: Drag | null): RenderItem[] {
+  const items: RenderItem[] = [];
+  for (const seg of activeSegments(project, t)) {
+    const target = project.targets.find((x) => x.id === seg.target);
+    if (!target) continue;
+    const dragging = drag !== null && drag.segId === seg.id;
+    const sampled = quadAt(seg, t, fps);
+    items.push({
+      style: target.style,
+      quad: dragging && drag ? drag.quad : sampled.quad,
+      speed: dragging ? 0 : sampled.speed,
+    });
+  }
+  return items;
+}
+
+/**
+ * 画面预览。打码在 canvas 上逐帧实时计算（真实画面像素），SVG 叠加层只负责轮廓、标签与拖拽手柄。
+ * 叠加层与 canvas 的坐标都是视频像素坐标。
+ */
 export function Preview(props: Props) {
   const { project, time, playing, selTarget, selSeg, compare, roiTargetId, onTime, onPlayingChange, onSelectSeg, onEditQuad, onPickRoi } = props;
   const svgRef = useRef<SVGSVGElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [rect, setRect] = useState<RectDrag | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -46,6 +71,8 @@ export function Preview(props: Props) {
   const video = project.video;
   const W = video?.width ?? 1920;
   const H = video?.height ?? 1080;
+  const fps = video?.fps && video.fps > 0 ? video.fps : 30;
+  const renderer = useMemo(() => new EffectRenderer(W, H), [W, H]);
   const shown: Segment[] = compare ? [] : activeSegments(project, time);
   const activeTarget = project.targets.find((t) => t.id === selTarget);
   const roiShown = !compare && (roiTargetId ? null : activeTarget?.roi ?? null);
@@ -79,6 +106,28 @@ export function Preview(props: Props) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing]);
+
+  // 实时打码循环：每个动画帧检查视频时刻是否变化；变化（播放、拖动进度条、编辑打码参数）时重绘。
+  // 暂停且时刻未变时不重复计算，避免空耗 CPU。
+  useEffect(() => {
+    let raf = 0;
+    let lastKey = '';
+    const frame = () => {
+      raf = requestAnimationFrame(frame);
+      const v = videoRef.current;
+      const c = canvasRef.current;
+      if (!v || !c || v.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      const key = String(v.currentTime);
+      if (key === lastKey) return;
+      lastKey = key;
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      const items = compare ? [] : renderItems(project, v.currentTime, fps, drag);
+      renderer.render(ctx, v, items);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [renderer, project, compare, drag, fps]);
 
   const toVideo = (clientX: number, clientY: number): [number, number] => {
     const svg = svgRef.current!;
@@ -134,19 +183,23 @@ export function Preview(props: Props) {
       style={{ aspectRatio: `${W} / ${H}`, width: `min(100%, calc((100vh - 340px) * ${W} / ${H}))` }}
     >
       {video ? (
-        <video
-          ref={videoRef}
-          className="video"
-          src={assetUrl(video.path)}
-          playsInline
-          preload="auto"
-          onTimeUpdate={(e) => onTime(e.currentTarget.currentTime)}
-          onLoadedMetadata={(e) => {
-            if (time > 0) e.currentTarget.currentTime = time;
-          }}
-          onEnded={() => onPlayingChange(false)}
-          onError={() => setVideoError('无法解码该视频，请确认编码格式或 ffmpeg 可用。')}
-        />
+        <>
+          {/* 视频元素只负责解码与播放；可见画面由下面的 canvas 实时绘制（含打码）。 */}
+          <video
+            ref={videoRef}
+            className="video-source"
+            src={assetUrl(video.path)}
+            playsInline
+            preload="auto"
+            onTimeUpdate={(e) => onTime(e.currentTarget.currentTime)}
+            onLoadedMetadata={(e) => {
+              if (time > 0) e.currentTarget.currentTime = time;
+            }}
+            onEnded={() => onPlayingChange(false)}
+            onError={() => setVideoError('无法解码该视频，请确认编码格式或 ffmpeg 可用。')}
+          />
+          <canvas ref={canvasRef} className="video" width={W} height={H} />
+        </>
       ) : (
         <div className="stage-empty">
           <div>还没有打开视频</div>
@@ -204,12 +257,10 @@ export function Preview(props: Props) {
         {shown.map((s) => {
           const tg = project.targets.find((x) => x.id === s.target);
           if (!tg) return null;
-          const quad: Quad | undefined = drag && drag.segId === s.id ? drag.quad : pickKeyframe(s, time)?.quad;
-          if (!quad) return null;
+          const quad: Quad = drag && drag.segId === s.id ? drag.quad : quadAt(s, time, fps).quad;
           const pts = quad.map((p) => `${p[0]},${p[1]}`).join(' ');
           const selected = selSeg === s.id;
           const dashed = s.status === 'pending' || s.status === 'low';
-          const fill = effectFill(tg.style.kind, s.id, tg.style.strength, tg.color);
           return (
             <g
               key={s.id}
@@ -219,11 +270,10 @@ export function Preview(props: Props) {
                 onSelectSeg(s.id);
               }}
             >
-              {fill.defs}
+              {/* 透明填充只用于命中测试，真正的打码效果由 canvas 绘制 */}
               <polygon
                 points={pts}
-                fill={fill.paint}
-                fillOpacity={s.status === 'low' ? 0.5 : 0.9}
+                fill="transparent"
                 stroke={tg.color}
                 strokeWidth={selected ? stroke * 2 : stroke}
                 strokeDasharray={dashed ? `${unit * 16} ${unit * 10}` : undefined}
@@ -251,39 +301,4 @@ export function Preview(props: Props) {
       </svg>
     </div>
   );
-}
-
-/** 按打码类型生成叠加填充：马赛克为棋盘格，模糊为柔化渐变，色块为纯色。 */
-function effectFill(kind: string, id: string, strength: number, color: string) {
-  if (kind === 'mosaic') {
-    const tile = Math.round(16 + strength * 24);
-    const pid = `pat-${id}`;
-    return {
-      paint: `url(#${pid})`,
-      defs: (
-        <defs key={pid}>
-          <pattern id={pid} width={tile} height={tile} patternUnits="userSpaceOnUse">
-            <rect width={tile} height={tile} fill="#7d828c" />
-            <rect width={tile / 2} height={tile / 2} fill="#c4c8cf" />
-            <rect x={tile / 2} y={tile / 2} width={tile / 2} height={tile / 2} fill="#c4c8cf" />
-          </pattern>
-        </defs>
-      ),
-    };
-  }
-  if (kind === 'blur') {
-    const pid = `blur-${id}`;
-    return {
-      paint: `url(#${pid})`,
-      defs: (
-        <defs key={pid}>
-          <radialGradient id={pid}>
-            <stop offset="0%" stopColor="#e8eaee" />
-            <stop offset="100%" stopColor="#9aa0a8" />
-          </radialGradient>
-        </defs>
-      ),
-    };
-  }
-  return { paint: color, defs: null };
 }

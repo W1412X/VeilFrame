@@ -170,9 +170,23 @@ export async function addManualSegment(
   return invoke<Snapshot>('add_manual_segment', { id, targetId, t0, t1, quad });
 }
 
-export async function scanTargets(targetIds: string[], interval = 0.5): Promise<ScanDone> {
+export interface ScanOptionsInput {
+  /** 扫描起点（秒），缺省为 0。 */
+  start?: number;
+  /** 扫描终点（秒），缺省或 null 表示扫到视频末尾。 */
+  end?: number | null;
+  /** 检测线程数，缺省由后端决定（4）。 */
+  threads?: number;
+}
+
+export async function scanTargets(targetIds: string[], options: ScanOptionsInput = {}): Promise<ScanDone> {
   requireDesktop();
-  return invoke<ScanDone>('scan_targets', { targetIds, interval });
+  return invoke<ScanDone>('scan_targets', {
+    targetIds,
+    start: options.start ?? null,
+    end: options.end ?? null,
+    threads: options.threads ?? null,
+  });
 }
 
 export async function cancelScan(): Promise<void> {

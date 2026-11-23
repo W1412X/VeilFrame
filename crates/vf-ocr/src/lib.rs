@@ -6,8 +6,9 @@
 //! 方向分类（cls）暂未接入，竖排文字靠裁剪后的旋转处理。
 
 use std::path::Path;
+use std::sync::Mutex;
 
-use ort::{session::Session, value::Tensor};
+use ort::{environment::Environment, session::Session, value::Tensor};
 use opencv::{core, imgproc, prelude::*};
 use vf_project::Quad;
 use vf_text::{OcrEngine, OcrLine};
@@ -47,9 +48,31 @@ fn cv_err(e: impl std::fmt::Display) -> OcrError {
     OcrError::Cv(e.to_string())
 }
 
+/// 进程内唯一的 ONNX Runtime 环境。ORT 每个进程只允许创建一个环境，
+/// 因此所有 OCR 会话（每个检测线程一个）共享它。环境随进程存活，这里有意不释放。
+static ORT_ENV: Mutex<Option<&'static Environment>> = Mutex::new(None);
+
+/// 返回共享环境；首次调用时加载 ONNX Runtime 动态库。之后的 `ort_lib` 参数被忽略。
+fn shared_environment(ort_lib: &Path) -> Result<&'static Environment, OcrError> {
+    let mut slot = ORT_ENV.lock().map_err(|_| OcrError::Ort("ONNX Runtime 环境锁已损坏".into()))?;
+    if let Some(env) = *slot {
+        return Ok(env);
+    }
+    let env = ort::init_from(ort_lib).map_err(ort_err)?.build().map_err(ort_err)?;
+    let env: &'static Environment = Box::leak(Box::new(env));
+    *slot = Some(env);
+    Ok(env)
+}
+
+fn commit_session(env: &Environment, model: &Path, intra_threads: Option<usize>) -> Result<Session, OcrError> {
+    let mut builder = Session::builder(env).map_err(ort_err)?;
+    if let Some(n) = intra_threads {
+        builder = builder.with_intra_threads(n).map_err(ort_err)?;
+    }
+    builder.commit_from_file(model).map_err(ort_err)
+}
+
 pub struct PpOcr {
-    /// 必须与会话同时存活，会话依赖它。
-    _env: ort::environment::Environment,
     det: Session,
     rec: Session,
     /// 字符表（不含 CTC 空白符）。索引 i 对应模型输出的类别 i+1。
@@ -57,19 +80,20 @@ pub struct PpOcr {
 }
 
 impl PpOcr {
-    /// 加载 ONNX Runtime 动态库与两个模型，并读取字典。
-    pub fn load(ort_lib: &Path, det_model: &Path, rec_model: &Path, dict_file: &Path) -> Result<Self, OcrError> {
-        let env = ort::init_from(ort_lib).map_err(ort_err)?.build().map_err(ort_err)?;
-        let det = Session::builder(&env)
-            .map_err(ort_err)?
-            .commit_from_file(det_model)
-            .map_err(ort_err)?;
-        let rec = Session::builder(&env)
-            .map_err(ort_err)?
-            .commit_from_file(rec_model)
-            .map_err(ort_err)?;
+    /// 加载两个模型并读取字典。每个会话独立，可在不同线程中各自创建。
+    /// `intra_threads` 为单个会话内部的线程数，`None` 使用 ONNX Runtime 默认值。
+    pub fn load(
+        ort_lib: &Path,
+        det_model: &Path,
+        rec_model: &Path,
+        dict_file: &Path,
+        intra_threads: Option<usize>,
+    ) -> Result<Self, OcrError> {
+        let env = shared_environment(ort_lib)?;
+        let det = commit_session(env, det_model, intra_threads)?;
+        let rec = commit_session(env, rec_model, intra_threads)?;
         let dict = load_dict(dict_file)?;
-        Ok(Self { _env: env, det, rec, dict })
+        Ok(Self { det, rec, dict })
     }
 
     /// 检测文字框，返回原图坐标下的四边形。

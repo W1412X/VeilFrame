@@ -148,7 +148,7 @@ fn scan_and_export_synthetic_logo() {
     let cancel = AtomicBool::new(false);
     let mut ticks = Vec::new();
     let summary = session
-        .scan_targets(&["logo".into()], ScanOptions { interval: 0.5 }, &cancel, |p| ticks.push(p.t))
+        .scan_targets(&["logo".into()], ScanOptions { interval: 0.5, ..Default::default() }, &cancel, |p| ticks.push(p.t))
         .expect("扫描");
     assert!(!summary.cancelled);
     assert!(!ticks.is_empty(), "应产生进度事件");

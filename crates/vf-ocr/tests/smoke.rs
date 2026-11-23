@@ -30,7 +30,7 @@ fn recognizes_text_in_real_image() {
     let data = rgb.data_bytes().unwrap().to_vec();
 
     let ort_lib = env_path("ORT_DYLIB_PATH");
-    let mut ocr = PpOcr::load(&ort_lib, &env_path("VF_OCR_DET"), &env_path("VF_OCR_REC"), &env_path("VF_OCR_DICT"))
+    let mut ocr = PpOcr::load(&ort_lib, &env_path("VF_OCR_DET"), &env_path("VF_OCR_REC"), &env_path("VF_OCR_DICT"), None)
         .expect("加载 OCR 模型失败");
 
     let lines = ocr.recognize(w, h, &data).expect("识别失败");

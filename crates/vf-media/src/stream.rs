@@ -23,6 +23,18 @@ impl FrameStream {
         fps: Option<f64>,
         size: Option<(usize, usize)>,
     ) -> Result<Self, MediaError> {
+        Self::open_range(ffmpeg, input, fps, size, None)
+    }
+
+    /// 同 [`FrameStream::open`]，但只解码 `range = (起点秒, 时长秒)` 内的画面。
+    /// 输出的第一帧对应起点时刻。
+    pub fn open_range(
+        ffmpeg: &Path,
+        input: &Path,
+        fps: Option<f64>,
+        size: Option<(usize, usize)>,
+        range: Option<(f64, f64)>,
+    ) -> Result<Self, MediaError> {
         let (width, height) = match size {
             Some(s) => s,
             None => {
@@ -38,7 +50,14 @@ impl FrameStream {
             filters.push(format!("scale={width}:{height}"));
         }
         let mut cmd = crate::media_command(ffmpeg);
-        cmd.args(["-v", "error", "-i"]).arg(input);
+        cmd.args(["-v", "error"]);
+        if let Some((start, len)) = range {
+            // -ss / -t 放在 -i 之前：输入级定位，输出时间戳从 0 开始
+            let ss = format!("{start:.6}");
+            let t = format!("{len:.6}");
+            cmd.args(["-ss", ss.as_str(), "-t", t.as_str()]);
+        }
+        cmd.arg("-i").arg(input);
         if !filters.is_empty() {
             cmd.args(["-vf", &filters.join(",")]);
         }

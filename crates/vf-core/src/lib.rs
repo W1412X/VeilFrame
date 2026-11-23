@@ -3,6 +3,8 @@
 //! 每个操作都在副本上执行并通过校验后才提交，失败时项目保持原样。
 //! 对应 `first_design.md` 2.5（负样本反馈）与 1.5（复核工作台）。
 
+use std::collections::HashSet;
+
 use vf_project::{Keyframe, Project, ProjectError, Quad, Segment, SegmentStatus, Source, Target};
 
 /// 人工否决时，目标阈值每次上调的步长（ADR 未定，先取保守值）。
@@ -271,17 +273,100 @@ impl Editor {
         })
     }
 
-    /// 用一次扫描的结果替换某目标的全部自动段（人工段保留）。可撤销。
+    /// 用一次全片扫描的结果替换某目标的全部自动段（人工段保留）。可撤销。
     pub fn replace_auto_segments(&mut self, target_id: &str, segments: Vec<Segment>) -> Result<(), EditError> {
+        self.replace_auto_segments_in(target_id, f64::NEG_INFINITY, f64::INFINITY, segments)
+    }
+
+    /// 用 `[start, end]` 范围内的扫描结果，替换该目标在此范围内的自动段。
+    ///
+    /// 与范围相交的旧自动段只去掉范围内的部分，范围外的部分保留（关键帧在切口处补齐）。
+    /// 人工段和其他目标不受影响。可撤销。
+    pub fn replace_auto_segments_in(
+        &mut self,
+        target_id: &str,
+        start: f64,
+        end: f64,
+        segments: Vec<Segment>,
+    ) -> Result<(), EditError> {
         self.apply(|p| {
             if p.target(target_id).is_none() {
                 return Err(EditError::TargetNotFound(target_id.to_string()));
             }
-            p.segments
-                .retain(|s| !(s.target == target_id && s.source == Source::Auto));
-            p.segments.extend(segments);
+            let old = std::mem::take(&mut p.segments);
+            let mut kept = Vec::with_capacity(old.len() + segments.len());
+            for s in old {
+                let affected = s.target == target_id
+                    && s.source == Source::Auto
+                    && s.t1 > start
+                    && s.t0 < end;
+                if affected {
+                    kept.extend(outside_range(s, start, end));
+                } else {
+                    kept.push(s);
+                }
+            }
+            kept.extend(segments);
+            make_ids_unique(&mut kept);
+            p.segments = kept;
             Ok(())
         })
+    }
+}
+
+/// 去掉 `[start, end]` 之内的部分，返回剩下的左右两段。
+fn outside_range(s: Segment, start: f64, end: f64) -> Vec<Segment> {
+    let mut out = Vec::new();
+    if s.t0 < start {
+        if let Some(keyframes) = keys_for_span(&s.keyframes, s.t0, start) {
+            out.push(Segment { t1: start, keyframes, ..s.clone() });
+        }
+    }
+    if s.t1 > end {
+        if let Some(keyframes) = keys_for_span(&s.keyframes, end, s.t1) {
+            out.push(Segment {
+                id: format!("{}-after", s.id),
+                t0: end,
+                keyframes,
+                ..s.clone()
+            });
+        }
+    }
+    out
+}
+
+/// 为 `[lo, hi]` 取关键帧：区间内的原关键帧保留，两端各补一个取最近关键帧的副本。
+/// 没有任何关键帧时返回 `None`，避免产生没有位置的段。
+fn keys_for_span(keys: &[Keyframe], lo: f64, hi: f64) -> Option<Vec<Keyframe>> {
+    const EPS: f64 = 1e-9;
+    if keys.is_empty() {
+        return None;
+    }
+    let nearest = |t: f64| {
+        keys.iter()
+            .min_by(|a, b| (a.t - t).abs().total_cmp(&(b.t - t).abs()))
+            .cloned()
+            .expect("keys 非空")
+    };
+    let mut out: Vec<Keyframe> = keys.iter().filter(|k| k.t > lo + EPS && k.t < hi - EPS).cloned().collect();
+    out.insert(0, Keyframe { t: lo, ..nearest(lo) });
+    out.push(Keyframe { t: hi, ..nearest(hi) });
+    Some(out)
+}
+
+/// 同一项目内检测段 id 必须唯一。发生冲突时给后出现的段追加 `-2`、`-3`……
+fn make_ids_unique(segments: &mut [Segment]) {
+    let mut seen: HashSet<String> = HashSet::new();
+    for s in segments.iter_mut() {
+        if seen.insert(s.id.clone()) {
+            continue;
+        }
+        let fresh = (2..)
+            .map(|n| format!("{}-{n}", s.id))
+            .find(|candidate| !seen.contains(candidate))
+            .expect("无限序列必定能找到未占用的 id");
+        seen.insert(fresh.clone());
+        s.id = fresh;
     }
 }
 
@@ -491,5 +576,39 @@ mod tests {
         e.undo().unwrap();
         assert!(e.project().segment("s1").is_some());
         assert!(e.project().segment("auto-new").is_none());
+    }
+
+    #[test]
+    fn range_replace_keeps_parts_outside_the_range() {
+        // 旧段 s1 为 [10, 20]。重扫 [12, 15] 后，s1 只剩 [10, 12]，尾部为 [15, 20]。
+        let mut e = Editor::new(base_project());
+        let mut fresh = e.project().segment("s1").unwrap().clone();
+        fresh.id = "new".into();
+        fresh.t0 = 12.0;
+        fresh.t1 = 15.0;
+        fresh.keyframes = vec![Keyframe { t: 12.0, quad: [[1.0; 2]; 4], conf: 0.8 }];
+        e.replace_auto_segments_in("t1", 12.0, 15.0, vec![fresh]).unwrap();
+
+        let p = e.project();
+        let head = p.segment("s1").expect("左侧保留");
+        assert_eq!((head.t0, head.t1), (10.0, 12.0));
+        let tail = p.segment("s1-after").expect("右侧保留");
+        assert_eq!((tail.t0, tail.t1), (15.0, 20.0));
+        assert!(p.segment("new").is_some());
+        assert!(p.validate().is_ok());
+    }
+
+    #[test]
+    fn range_replace_renames_colliding_ids() {
+        // 新扫描的段 id 与保留下来的旧段 id 冲突时，新段改名，旧段不变
+        let mut e = Editor::new(base_project());
+        let mut fresh = e.project().segment("s1").unwrap().clone();
+        fresh.t0 = 18.0;
+        fresh.t1 = 19.0;
+        fresh.keyframes = vec![Keyframe { t: 18.0, quad: [[0.0; 2]; 4], conf: 0.9 }];
+        e.replace_auto_segments_in("t1", 18.0, 19.0, vec![fresh]).unwrap();
+        assert!(e.project().segment("s1").is_some());
+        assert!(e.project().segment("s1-2").is_some());
+        assert!(e.project().validate().is_ok());
     }
 }

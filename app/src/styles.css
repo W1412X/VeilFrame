@@ -100,6 +100,10 @@ input[type="checkbox"] { accent-color: var(--acc); margin-right: 6px; }
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
   background: #000; display: block;
 }
+/* 解码用的隐藏视频：保留渲染以持续解码和播放声音，画面由 canvas 绘制 */
+.video-source {
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none;
+}
 .stage-empty {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 6px; color: #cfd3da; text-align: center; padding: 24px;
