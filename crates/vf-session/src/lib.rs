@@ -586,9 +586,13 @@ fn scan_text_target(
             target.name
         )));
     }
-    let (sx, sy) = (pw as f64 / video.width.max(1) as f64, ph as f64 / video.height.max(1) as f64);
+    // 两个方向：区域（源像素）→ 代理像素用于匹配；代理四边形 → 源像素用于输出。
+    let (to_proxy_x, to_proxy_y) = (pw as f64 / video.width.max(1) as f64, ph as f64 / video.height.max(1) as f64);
+    let (to_source_x, to_source_y) = (video.width as f64 / pw as f64, video.height as f64 / ph as f64);
     // 区域以源视频像素保存，匹配时换算到代理分辨率。OCR 对整帧进行，区域只在匹配时过滤。
-    let roi = target.roi.map(|r| (r[0] as f64 * sx, r[1] as f64 * sy, r[2] as f64 * sx, r[3] as f64 * sy));
+    let roi = target.roi.map(|r| {
+        (r[0] as f64 * to_proxy_x, r[1] as f64 * to_proxy_y, r[2] as f64 * to_proxy_x, r[3] as f64 * to_proxy_y)
+    });
     let ns = ocr_namespace(&video.content_hash, pw, ph, interval, &config.ocr)?;
 
     let cached = match cache {
@@ -626,7 +630,7 @@ fn scan_text_target(
         .map(|(t, lines)| (t, match_lines(&lines, &query, roi, target.threshold)))
         .collect();
     let mut fused = fuse_frames(per_frame, &Default::default(), interval, end, !cancelled);
-    scale_fused_segments(&mut fused, sx, sy);
+    scale_fused_segments(&mut fused, to_source_x, to_source_y);
     Ok(TextOutcome {
         segments: to_segments(&target.id, &fused, Engine::Ocr),
         cancelled,
@@ -926,6 +930,70 @@ mod tests {
         let proj = s.project();
         assert_eq!(proj.segment("s1").unwrap().status, SegmentStatus::Rejected);
         assert!((proj.target("t1").unwrap().threshold - 0.61).abs() < 1e-9);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn cached_text_quads_are_scaled_from_proxy_to_source_pixels() {
+        let dir = tmp_dir("text-scale");
+        let (mut p, _) = project_with_text_target(&dir);
+        // 源视频 1920x1080，代理 960x540：代理坐标要乘以 2 才是源像素
+        {
+            let v = p.video.as_mut().unwrap();
+            v.width = 1920;
+            v.height = 1080;
+            v.duration = 1.0;
+            v.fps = 2.0;
+        }
+        p.targets[0].scan_start = 0.0;
+        p.targets[0].scan_end = Some(1.0);
+
+        // OCR 模型只需存在即可（用于计算缓存键），缓存完整时不会真正加载
+        let models = dir.join("models");
+        std::fs::create_dir_all(&models).unwrap();
+        for name in ["det.onnx", "rec.onnx", "dict.txt", "libort.so"] {
+            std::fs::write(models.join(name), b"stub").unwrap();
+        }
+        let config = SessionConfig {
+            cache_db: dir.join("cache.db"),
+            ocr: OcrModelPaths {
+                ort_lib: models.join("libort.so"),
+                det: models.join("det.onnx"),
+                rec: models.join("rec.onnx"),
+                dict: models.join("dict.txt"),
+            },
+            ..Default::default()
+        };
+        let (pw, ph) = proxy_size(1920, 1080, config.proxy_max_side);
+        assert_eq!((pw, ph), (960, 540));
+
+        // 预先写入 0.0、0.5、1.0 三帧的 OCR 结果（代理坐标），扫描应直接命中缓存
+        let video = p.video.clone().unwrap();
+        let ns = ocr_namespace(&video.content_hash, pw, ph, 0.5, &config.ocr).unwrap();
+        let quad: Quad = [[100.0, 50.0], [300.0, 50.0], [300.0, 80.0], [100.0, 80.0]];
+        let line = OcrLine { quad, text: "机密".into(), conf: 0.9 };
+        {
+            let cache = PerceptualCache::open(&config.cache_db).unwrap();
+            for k in 0..=2u64 {
+                cache.put_ocr_frame(&ns, k, std::slice::from_ref(&line)).unwrap();
+            }
+        }
+
+        let mut s = Session::new(p, None, config);
+        let cancel = AtomicBool::new(false);
+        let opts = ScanOptions { interval: 0.5, threads: 1 };
+        let summary = s.scan_targets(&["t1".into()], opts, &cancel, |_| {}).unwrap();
+        assert_eq!(summary.segments, 1);
+        assert_eq!(summary.computed_frames, 0, "应全部来自缓存");
+
+        // 代理坐标 ×2 即源像素坐标
+        let expected: Quad = [[200.0, 100.0], [600.0, 100.0], [600.0, 160.0], [200.0, 160.0]];
+        let got = s.project().segments[0].keyframes[0].quad;
+        for (a, b) in got.iter().zip(expected.iter()) {
+            for i in 0..2 {
+                assert!((a[i] - b[i]).abs() < 1e-6, "四边形未换算到源像素：{got:?}");
+            }
+        }
         std::fs::remove_dir_all(dir).unwrap();
     }
 
