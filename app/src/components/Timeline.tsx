@@ -524,15 +524,6 @@ export function Timeline({
               <div className="tl-tip" style={{ left: hover.x }}>{formatTime(hover.t)}</div>
             </>
           )}
-          {/* 始终挂载，便于异步绘制；仅在悬停且已有画面时显示 */}
-          <canvas
-            ref={thumbCanvasRef}
-            className="tl-thumb"
-            width={160}
-            height={90}
-            style={{ left: hover?.x ?? 0, display: hover && thumbReady ? 'block' : 'none' }}
-          />
-
         </div>
       </div>
 
@@ -546,6 +537,19 @@ export function Timeline({
           playsInline
         />
       )}
+
+      {/* 悬停缩略图浮在时间轴上方（而不是轨道之上），避免遮挡段色块。
+          始终挂载，便于异步绘制；仅在悬停且已有画面时显示。水平位置跟随悬停点，并限制在可视区内。 */}
+      <canvas
+        ref={thumbCanvasRef}
+        className="tl-thumb"
+        width={160}
+        height={90}
+        style={{
+          left: Math.min(Math.max(hover ? hover.x - scrollX : 0, 84), Math.max(84, width - 84)),
+          display: hover && thumbReady ? 'block' : 'none',
+        }}
+      />
 
       {!playheadVisible && (
         <button className="tl-back" onClick={() => centerOn(time)} title="把播放头放回可视区域">
