@@ -17,13 +17,11 @@ use vf_media::{sampled_content_hash, FfprobeBackend, MediaBackend};
 use vf_ocr::PpOcr;
 use vf_pipeline::{
     cached_ocr_frames, fuse_frames, match_lines, run_frames, sample_window, scale_fused_segments, to_segments, Detector,
-    FfmpegFrameSource, FrameStore, FrameWorker, MultiDetector, NccDetector, OcrStore, OcrWorker, RoiDetector,
-    ScanConfig, ScanOutcome, SiftDetector, ThresholdDetector,
+    FfmpegFrameSource, FrameStore, FrameWorker, ImageCascade, ImageStrategy, MultiDetector, OcrStore, OcrWorker,
+    RoiDetector, ScanConfig, ScanOutcome, ThresholdDetector,
 };
 use vf_project::{Engine, Keyframe, Mode, Project, Quad, Segment, SegmentStatus, Source, Target, TargetKind, TextMatchMode, Video};
 use vf_text::{MatchMode, OcrLine, TextQuery};
-use vf_vision::ncc::NccTemplate;
-use vf_vision::sift::SiftMatcher;
 
 /// OCR 模型与运行时路径。
 #[derive(Debug, Clone)]
@@ -157,6 +155,8 @@ pub struct ScanSummary {
     pub reused_frames: u64,
     /// 文本目标新做 OCR 的帧数。
     pub computed_frames: u64,
+    /// 扫描前的模板检查提示（模板过小、过平坦、特征点不足等）。不影响扫描结果。
+    pub warnings: Vec<String>,
 }
 
 /// 一个已打开的项目及其运行时资源（感知缓存、OCR 会话按需加载）。
@@ -330,10 +330,9 @@ impl Session {
         let _cv_threads = (threads > 1).then(|| CvThreadsGuard::limit(1));
 
         let (pw, ph) = proxy_size(video.width, video.height, self.config.proxy_max_side);
-        let (sx, sy) = (video.width as f64 / pw as f64, video.height as f64 / ph as f64);
         let cache_warning = self.ensure_cache();
         let project_dir = self.project_path.as_deref().and_then(Path::parent).map(Path::to_path_buf);
-        let (built, cache_warning, stopped, reused_total, computed_total) = {
+        let (built, cache_warning, stopped, reused_total, computed_total, warnings) = {
             let Session { editor, config, cache, .. } = self;
             let project = editor.project();
             // 每个条目为 (目标, 新段, 是否取消, 替换范围起点, 替换范围终点)。
@@ -342,6 +341,7 @@ impl Session {
             let mut stopped = false;
             let mut reused_total = 0u64;
             let mut computed_total = 0u64;
+            let mut warnings: Vec<String> = Vec::new();
 
             for (idx, tid) in target_ids.iter().enumerate() {
                 if cancel.load(Ordering::Relaxed) {
@@ -408,13 +408,17 @@ impl Session {
                         target.name
                     )));
                 }
-                let (factory, engine, template_fingerprint) =
-                    build_detector_factory(&target, &video, project_dir.as_deref(), pw, ph)?;
+                // 精准档的图像目标在源分辨率上匹配，其余保持代理分辨率。
+                let (tpw, tph) = if target.mode == Mode::Precise { (video.width, video.height) } else { (pw, ph) };
+                let (tsx, tsy) = (video.width as f64 / tpw as f64, video.height as f64 / tph as f64);
+                let (factory, engine, template_fingerprint, mut target_hints) =
+                    build_detector_factory(&target, &video, project_dir.as_deref(), tpw, tph)?;
+                warnings.append(&mut target_hints);
 
                 // 缓存参数不含扫描范围：缓存键是绝对采样序号，同一帧在任何范围内结果相同。
                 let params = serde_json::json!({
                     "target": target,
-                    "proxy": [pw, ph],
+                    "proxy": [tpw, tph],
                     "interval": interval,
                     "templates": template_fingerprint,
                 })
@@ -425,7 +429,7 @@ impl Session {
                     &config.ffmpeg.ffmpeg,
                     Path::new(&video.path),
                     1.0 / interval,
-                    Some((pw as usize, ph as usize)),
+                    Some((tpw as usize, tph as usize)),
                     Some((window_start, window_len)),
                 )
                 .map_err(SessionError::Scan)?;
@@ -454,7 +458,7 @@ impl Session {
                     // 取消时只替换已扫描过的部分，未扫描的时段保留旧结果。
                     ScanOutcome::Cancelled { scanned_until, partial } => (partial, true, scanned_until),
                 };
-                scale_fused_segments(&mut fused, sx, sy);
+                scale_fused_segments(&mut fused, tsx, tsy);
                 built.push((tid.clone(), to_segments(tid, &fused, engine), cancelled, start, replace_end));
                 if cancelled {
                     // 已取消：保留当前目标的局部结果，未开始的目标不再处理。
@@ -462,13 +466,14 @@ impl Session {
                     break;
                 }
             }
-            (built, cache_warning, stopped, reused_total, computed_total)
+            (built, cache_warning, stopped, reused_total, computed_total, warnings)
         };
 
         let mut summary = ScanSummary {
             cache_warning,
             reused_frames: reused_total,
             computed_frames: computed_total,
+            warnings,
             ..Default::default()
         };
         for (tid, segments, cancelled, start, replace_end) in built {
@@ -676,8 +681,9 @@ fn ocr_worker_factory(
 fn engine_version(engine: Engine) -> &'static str {
     match engine {
         Engine::Ocr => "ocr-ppv5-1",
-        Engine::Ncc => "ncc-1",
-        _ => "sift-1",
+        // 图像匹配算法版本：级联检测与置信度变更后递增，避免复用旧版本的缓存结果
+        Engine::Ncc => "ncc-2",
+        _ => "sift-2",
     }
 }
 
@@ -708,71 +714,91 @@ fn file_fingerprint(path: &Path) -> Result<String, SessionError> {
 /// 每个检测线程调用一次，在本线程内创建自己的检测器（OCR 会话等不跨线程共享）。
 type DetectorFactory = Box<dyn Fn() -> Result<Box<dyn Detector>, String> + Sync>;
 
-/// 构造某目标的检测器工厂（含模板变体组合、ROI、阈值），并返回实际使用的引擎与模板指纹。
+/// 代理分辨率下模板最短边小于此值时给出提示。
+const MIN_TEMPLATE_SIDE_PX: i32 = 16;
+
+/// 把源分辨率的模板缩放到帧所在的分辨率。
+fn scale_template(gray: &core::Mat, factor: f64) -> opencv::Result<core::Mat> {
+    if (factor - 1.0).abs() < 1e-6 {
+        return gray.try_clone();
+    }
+    let mut out = core::Mat::default();
+    imgproc::resize(gray, &mut out, core::Size::new(0, 0), factor, factor, imgproc::INTER_AREA)?;
+    Ok(out)
+}
+
+/// 构造图像目标的检测器工厂（含模板变体组合、ROI、阈值），返回引擎、模板指纹与模板检查提示。
 ///
-/// 模板在主线程做一次预检查，错误尽早返回；工厂内部再按线程加载。文本目标不经过这里。
+/// 模板在主线程做一次读取与检查，检查结果只作为提示返回，不阻止扫描。
+/// 工厂在每个检测线程内按模板重新加载，并构建级联检测器。文本目标不经过这里。
 fn build_detector_factory(
     target: &Target,
     video: &Video,
     project_dir: Option<&Path>,
     pw: u32,
     ph: u32,
-) -> Result<(DetectorFactory, Engine, String), SessionError> {
+) -> Result<(DetectorFactory, Engine, String, Vec<String>), SessionError> {
     let (sx, sy) = (pw as f64 / video.width.max(1) as f64, ph as f64 / video.height.max(1) as f64);
-    let (inner, engine, fingerprint): (DetectorFactory, Engine, String) = match target.kind {
-        TargetKind::Image => {
-            if target.variants.is_empty() {
-                return Err(SessionError::MissingTemplate(target.id.clone()));
-            }
-            let use_ncc = target.engine == Engine::Ncc || target.mode == Mode::Fast;
-            let engine = if use_ncc { Engine::Ncc } else { Engine::SiftRansac };
-            let mut templates: Vec<(String, PathBuf)> = Vec::new();
-            let mut hashes = Vec::new();
-            for variant in &target.variants {
-                let path = resolve_variant(variant, project_dir);
-                hashes.push(file_fingerprint(&path)?);
-                // 预检查：模板必须能读取
-                gray_from_file(&path).map_err(|e| SessionError::Scan(format!("模板 {variant}：{e}")))?;
-                templates.push((variant.clone(), path));
-            }
-            let factor = pw as f64 / video.width.max(1) as f64;
-            let factory = move || -> Result<Box<dyn Detector>, String> {
-                let mut detectors: Vec<Box<dyn Detector>> = Vec::new();
-                for (name, path) in &templates {
-                    let mut gray = gray_from_file(path).map_err(|e| e.to_string())?;
-                    if use_ncc {
-                        if (factor - 1.0).abs() > 1e-6 {
-                            let mut scaled = core::Mat::default();
-                            imgproc::resize(
-                                &gray,
-                                &mut scaled,
-                                core::Size::new(0, 0),
-                                factor,
-                                factor,
-                                imgproc::INTER_AREA,
-                            )
-                            .map_err(|e| e.to_string())?;
-                            gray = scaled;
-                        }
-                        if gray.rows() < 2 || gray.cols() < 2 {
-                            return Err(format!("模板 {name} 尺寸过小"));
-                        }
-                        detectors.push(Box::new(NccDetector {
-                            template: NccTemplate::new(gray, vec![0.9, 1.0, 1.1], 0.0, 8),
-                        }));
-                    } else {
-                        let matcher = SiftMatcher::new(&gray).map_err(|e| e.to_string())?;
-                        detectors.push(Box::new(SiftDetector { matcher }));
-                    }
-                }
-                Ok(Box::new(MultiDetector { detectors }))
-            };
-            (Box::new(factory), engine, hashes.join(","))
+    if target.kind != TargetKind::Image {
+        return Err(SessionError::Scan("该类目标不走图像检测路径".into()));
+    }
+    if target.variants.is_empty() {
+        return Err(SessionError::MissingTemplate(target.id.clone()));
+    }
+    let strategy = if target.mode == Mode::Fast { ImageStrategy::Fast } else { ImageStrategy::Refine };
+    // 局部匹配的放大倍数：标准档在 2 倍的候选区域上匹配；精准档本身已是源分辨率，不放大。
+    let local_scale = if target.mode == Mode::Precise { 1.0 } else { 2.0 };
+    let engine = if strategy == ImageStrategy::Fast { Engine::Ncc } else { Engine::SiftRansac };
+    let factor = pw as f64 / video.width.max(1) as f64;
+    let threshold = target.threshold;
+
+    let mut templates: Vec<(String, PathBuf)> = Vec::new();
+    let mut hashes = Vec::new();
+    let mut hints = Vec::new();
+    for variant in &target.variants {
+        let path = resolve_variant(variant, project_dir);
+        hashes.push(file_fingerprint(&path)?);
+        let gray = gray_from_file(&path).map_err(|e| SessionError::Scan(format!("模板 {variant}：{e}")))?;
+        let tpl = scale_template(&gray, factor).map_err(|e| SessionError::Scan(e.to_string()))?;
+
+        // 模板检查（主线程，只产生提示）
+        let probe = ImageCascade::new(&tpl, strategy, threshold, local_scale)
+            .map_err(|e| SessionError::Scan(e.to_string()))?;
+        let short = tpl.rows().min(tpl.cols());
+        if short < MIN_TEMPLATE_SIDE_PX {
+            hints.push(format!(
+                "「{}」的模板太小（代理分辨率下最短边 {short} 像素），建议框选更大的区域。",
+                target.name
+            ));
         }
-        TargetKind::Text | TargetKind::Region => {
-            return Err(SessionError::Scan("该类目标不走图像检测路径".into()));
+        let sd = probe.template_std().map_err(|e| SessionError::Scan(e.to_string()))?;
+        if sd < vf_vision::ncc::MIN_TEMPLATE_STD {
+            hints.push(format!(
+                "「{}」的模板颜色变化很少（灰度标准差 {sd:.1}），无法可靠定位，建议框选包含更多细节的区域。",
+                target.name
+            ));
         }
+        if probe.local_keypoints() < vf_pipeline::VERIFY_MIN_KEYPOINTS {
+            hints.push(format!(
+                "「{}」的模板特征点不足（{} 个），特征匹配可能无法确认，建议框选包含更多细节的区域。",
+                target.name,
+                probe.local_keypoints()
+            ));
+        }
+        templates.push((variant.clone(), path));
+    }
+
+    let inner_factory = move || -> Result<Box<dyn Detector>, String> {
+        let mut detectors: Vec<Box<dyn Detector>> = Vec::new();
+        for (name, path) in &templates {
+            let gray = gray_from_file(path).map_err(|e| format!("模板 {name}：{e}"))?;
+            let tpl = scale_template(&gray, factor).map_err(|e| e.to_string())?;
+            let cascade = ImageCascade::new(&tpl, strategy, threshold, local_scale).map_err(|e| e.to_string())?;
+            detectors.push(Box::new(cascade));
+        }
+        Ok(Box::new(MultiDetector { detectors }))
     };
+    let inner: DetectorFactory = Box::new(inner_factory);
 
     // ROI 与阈值在每个线程的检测器外层包裹，行为与单线程一致。
     let roi = target.roi.map(|roi| {
@@ -792,7 +818,7 @@ fn build_detector_factory(
         };
         Ok(Box::new(ThresholdDetector { inner: wrapped, min_conf }))
     });
-    Ok((factory, engine, fingerprint))
+    Ok((factory, engine, hashes.join(","), hints))
 }
 
 /// 单个 OCR 会话内部的线程数：把机器的逻辑核心平均分给各检测线程。

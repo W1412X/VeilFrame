@@ -285,11 +285,13 @@ export function App() {
         const res = await api.scanTargets(targets, { threads });
         setSnap(res.snapshot);
         const s = res.summary;
-        if (s.cancelled) setMessage(`扫描已取消，已扫到 ${s.scanned_until.toFixed(1)} s`);
-        else if (s.cache_warning) setMessage(`扫描完成，共 ${s.segments} 段；${s.cache_warning}`);
+        // 模板检查提示（过小、过平坦、特征点不足）附在消息末尾
+        const tips = s.warnings.length ? `；提示：${s.warnings.join('；')}` : '';
+        if (s.cancelled) setMessage(`扫描已取消，已扫到 ${s.scanned_until.toFixed(1)} s${tips}`);
+        else if (s.cache_warning) setMessage(`扫描完成，共 ${s.segments} 段；${s.cache_warning}${tips}`);
         else if (s.reused_frames > 0 && s.computed_frames === 0)
-          setMessage(`扫描完成，共 ${s.segments} 段（使用 OCR 缓存，未重新识别）`);
-        else setMessage(`扫描完成，共 ${s.segments} 段`);
+          setMessage(`扫描完成，共 ${s.segments} 段（使用 OCR 缓存，未重新识别）${tips}`);
+        else setMessage(`扫描完成，共 ${s.segments} 段${tips}`);
       } finally {
         setScanState(null);
       }
@@ -311,7 +313,8 @@ export function App() {
         fuzzy_edits: 1,
         engine: input.kind === 'text' ? 'ocr' : input.kind === 'image' ? 'sift_ransac' : 'auto',
         mode: 'standard',
-        threshold: 0.6,
+        // 图像匹配的分数语义与文字不同，默认阈值更高，减少平坦区域的误报
+        threshold: input.kind === 'image' ? 0.8 : 0.6,
         roi: null,
         style: { kind: 'mosaic', strength: 0.6, padding: 6, feather: true, motion_pad: true },
         enabled: true,

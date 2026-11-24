@@ -16,14 +16,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::thread;
 
-use opencv::core;
+use opencv::{core, prelude::*};
 use vf_cache::{Namespace, PerceptualCache};
 use vf_fusion::{fuse, Detection, FusedSegment, FusionParams};
 use vf_image::{crop_rgb, gray_from_rgb, RgbFrame};
 use vf_media::stream::FrameStream;
-use vf_project::{Engine, Keyframe, Segment, SegmentStatus, Source};
+use vf_project::{Engine, Keyframe, Quad, Segment, SegmentStatus, Source};
 use vf_text::{sub_quad, OcrEngine, OcrLine, TextQuery};
-use vf_vision::ncc::NccTemplate;
+use vf_vision::ncc::{NccMatch, NccTemplate};
 use vf_vision::sift::SiftMatcher;
 
 /// 低于此置信度的段标记为"低置信"，进入 triage 队列。
@@ -84,6 +84,144 @@ impl Detector for SiftDetector {
         match self.matcher.locate(&gray).map_err(|e| e.to_string())? {
             Some(loc) => Ok(vec![Detection { quad: loc.quad, conf: loc.conf }]),
             None => Ok(Vec::new()),
+        }
+    }
+}
+
+/// 图像目标的检测策略。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageStrategy {
+    /// 极速：NCC 候选，模板特征足够时再用局部特征匹配确认。
+    Fast,
+    /// 标准 / 精准：整帧 SIFT；另用 NCC 粗候选 + 候选区域的局部 SIFT 找小目标与其余实例。
+    Refine,
+}
+
+/// 精化档中 NCC 粗候选的阈值。它只决定哪些区域值得做局部确认，不直接作为结果。
+pub const COARSE_NCC_THRESHOLD: f64 = 0.6;
+/// 模板的特征点少于此数量时，局部特征确认没有意义，极速档不做确认。
+pub const VERIFY_MIN_KEYPOINTS: usize = 12;
+/// 多尺度 NCC 的比例。
+const NCC_SCALES: [f64; 3] = [0.9, 1.0, 1.1];
+const FAST_MAX_CANDIDATES: usize = 5;
+const COARSE_MAX_CANDIDATES: usize = 5;
+
+/// 候选框外扩的比例（相对候选框的较长边）：局部确认时要包住目标的完整轮廓。
+const CANDIDATE_MARGIN: f64 = 0.5;
+
+/// 图像目标的级联检测器。模板应已位于帧所在的分辨率（代理或源）。
+pub struct ImageCascade {
+    strategy: ImageStrategy,
+    fast: NccTemplate,
+    coarse: NccTemplate,
+    sift_global: SiftMatcher,
+    sift_local: SiftMatcher,
+}
+
+impl ImageCascade {
+    /// `threshold` 为极速档的 NCC 阈值。`local_scale` 为候选区域局部匹配的放大倍数（标准 2，精准 1）。
+    pub fn new(template: &core::Mat, strategy: ImageStrategy, threshold: f64, local_scale: f64) -> opencv::Result<Self> {
+        Ok(Self {
+            strategy,
+            fast: NccTemplate::new(template.try_clone()?, NCC_SCALES.to_vec(), threshold, FAST_MAX_CANDIDATES),
+            coarse: NccTemplate::new(template.try_clone()?, NCC_SCALES.to_vec(), COARSE_NCC_THRESHOLD, COARSE_MAX_CANDIDATES),
+            sift_global: SiftMatcher::new(template, 1.0)?,
+            sift_local: SiftMatcher::new(template, local_scale)?,
+        })
+    }
+
+    /// 整帧 SIFT 的模板特征点数。
+    pub fn global_keypoints(&self) -> usize {
+        self.sift_global.template_keypoints()
+    }
+
+    /// 局部 SIFT 的模板特征点数（已按放大倍数计）。
+    pub fn local_keypoints(&self) -> usize {
+        self.sift_local.template_keypoints()
+    }
+
+    /// 模板的灰度标准差。
+    pub fn template_std(&self) -> opencv::Result<f64> {
+        self.fast.template_std()
+    }
+
+    /// 候选框外扩后的裁剪区域，限制在帧内。
+    fn expanded(m: &NccMatch, frame_w: i32, frame_h: i32) -> core::Rect {
+        let margin = (CANDIDATE_MARGIN * m.w.max(m.h) as f64).round() as i32;
+        let x0 = (m.x - margin).max(0);
+        let y0 = (m.y - margin).max(0);
+        let x1 = (m.x + m.w + margin).min(frame_w);
+        let y1 = (m.y + m.h + margin).min(frame_h);
+        core::Rect::new(x0, y0, x1 - x0, y1 - y0)
+    }
+
+    /// 四边形的中心点。
+    fn center(q: &Quad) -> (f64, f64) {
+        let x = q.iter().map(|p| p[0]).sum::<f64>() / 4.0;
+        let y = q.iter().map(|p| p[1]).sum::<f64>() / 4.0;
+        (x, y)
+    }
+
+    /// 点是否落在四边形的外接矩形内。
+    fn bbox_contains(q: &Quad, (px, py): (f64, f64)) -> bool {
+        let xs = q.iter().map(|p| p[0]);
+        let ys = q.iter().map(|p| p[1]);
+        let (x0, x1) = (xs.clone().fold(f64::INFINITY, f64::min), xs.fold(f64::NEG_INFINITY, f64::max));
+        let (y0, y1) = (ys.clone().fold(f64::INFINITY, f64::min), ys.fold(f64::NEG_INFINITY, f64::max));
+        px >= x0 && px <= x1 && py >= y0 && py <= y1
+    }
+
+    /// 极速档的候选确认：在候选区域内做局部特征匹配，定位结果的中心必须落在候选附近。
+    fn confirm(&mut self, gray: &core::Mat, m: &NccMatch) -> opencv::Result<bool> {
+        let rect = Self::expanded(m, gray.cols(), gray.rows());
+        let Some(loc) = self.sift_local.locate_roi(gray, rect)? else {
+            return Ok(false);
+        };
+        let (cx, cy) = Self::center(&loc.quad);
+        let margin = CANDIDATE_MARGIN * m.w.max(m.h) as f64;
+        Ok(cx >= m.x as f64 - margin
+            && cx <= (m.x + m.w) as f64 + margin
+            && cy >= m.y as f64 - margin
+            && cy <= (m.y + m.h) as f64 + margin)
+    }
+}
+
+impl Detector for ImageCascade {
+    fn detect(&mut self, frame: &RgbFrame) -> Result<Vec<Detection>, String> {
+        let err = |e: opencv::Error| e.to_string();
+        let gray = gray_from_rgb(frame.width, frame.height, &frame.data).map_err(|e| e.to_string())?;
+        let full = core::Rect::new(0, 0, frame.width as i32, frame.height as i32);
+        match self.strategy {
+            ImageStrategy::Fast => {
+                let hits = self.fast.find(&gray, full).map_err(err)?;
+                let verify = self.sift_local.template_keypoints() >= VERIFY_MIN_KEYPOINTS;
+                let mut out = Vec::new();
+                for m in hits {
+                    if verify && !self.confirm(&gray, &m).map_err(err)? {
+                        continue;
+                    }
+                    out.push(Detection { quad: m.quad(), conf: m.score });
+                }
+                Ok(out)
+            }
+            ImageStrategy::Refine => {
+                let mut out: Vec<Detection> = Vec::new();
+                if let Some(loc) = self.sift_global.locate(&gray).map_err(err)? {
+                    out.push(Detection { quad: loc.quad, conf: loc.conf });
+                }
+                for m in self.coarse.find(&gray, full).map_err(err)? {
+                    let rect = Self::expanded(&m, frame.width as i32, frame.height as i32);
+                    let Some(loc) = self.sift_local.locate_roi(&gray, rect).map_err(err)? else {
+                        continue;
+                    };
+                    // 与已有结果重复（中心点落在已有框内）时跳过
+                    if out.iter().any(|d| Self::bbox_contains(&d.quad, Self::center(&loc.quad))) {
+                        continue;
+                    }
+                    out.push(Detection { quad: loc.quad, conf: loc.conf });
+                }
+                Ok(out)
+            }
         }
     }
 }
@@ -1029,5 +1167,64 @@ mod ocr_cache_tests {
         .unwrap();
         assert!(cached_ocr_frames(&cache, &ns, 0.0, 2.0, 1.0).unwrap().is_none(), "第三帧缺失");
         assert!(cached_ocr_frames(&cache, &ns, 0.0, 1.0, 1.0).unwrap().is_some());
+    }
+}
+
+#[cfg(test)]
+mod image_cascade_tests {
+    use super::*;
+    use vf_vision::testutil::{fill, proxy_frame, proxy_obj, proxy_template, source_scene};
+
+    /// 把单通道帧包装成 RGB24 帧（三通道相同），与 ffmpeg 输出的格式一致。
+    fn rgb_frame(gray: &core::Mat) -> opencv::Result<RgbFrame> {
+        let bytes = gray.data_bytes()?;
+        let rgb: Vec<u8> = bytes.iter().flat_map(|&g| [g, g, g]).collect();
+        let mut f = RgbFrame::new(gray.cols() as usize, gray.rows() as usize, [0, 0, 0]);
+        f.data = rgb;
+        Ok(f)
+    }
+
+    fn near(q: &Quad, (x, y): (f64, f64), tol: f64) -> bool {
+        (q[0][0] - x).abs() < tol && (q[0][1] - y).abs() < tol
+    }
+
+    #[test]
+    fn fast_mode_finds_textured_object() -> opencv::Result<()> {
+        let src = source_scene(true)?;
+        let frame = rgb_frame(&proxy_frame(&src)?)?;
+        let mut det = ImageCascade::new(&proxy_template(&src)?, ImageStrategy::Fast, 0.8, 2.0)?;
+        let dets = det.detect(&frame).unwrap();
+        assert_eq!(dets.len(), 1, "应只检出一次：{dets:?}");
+        assert!(near(&dets[0].quad, proxy_obj_xy(), 6.0), "位置 {:?}", dets[0].quad);
+        Ok(())
+    }
+
+    #[test]
+    fn refine_mode_finds_textured_object() -> opencv::Result<()> {
+        let src = source_scene(true)?;
+        let frame = rgb_frame(&proxy_frame(&src)?)?;
+        let mut det = ImageCascade::new(&proxy_template(&src)?, ImageStrategy::Refine, 0.8, 2.0)?;
+        let dets = det.detect(&frame).unwrap();
+        assert!(dets.iter().any(|d| near(&d.quad, proxy_obj_xy(), 6.0)), "标准档应找到目标：{dets:?}");
+        Ok(())
+    }
+
+    #[test]
+    fn fast_mode_ignores_flat_decoys_when_object_is_absent() -> opencv::Result<()> {
+        // 模板是平坦的深色条（NCC 会在背景上给出约 0.6 的伪峰值）；帧里没有目标。
+        // 阈值 0.8 与局部确认都应排除这些伪峰值。
+        let src = source_scene(false)?;
+        let mut blank = src.try_clone()?;
+        fill(&mut blank, core::Rect::new(800, 400, 200, 120), 240.0)?;
+        let frame = rgb_frame(&proxy_frame(&blank)?)?;
+        let mut det = ImageCascade::new(&proxy_template(&src)?, ImageStrategy::Fast, 0.8, 2.0)?;
+        let dets = det.detect(&frame).unwrap();
+        assert!(dets.is_empty(), "不应有误报：{dets:?}");
+        Ok(())
+    }
+
+    fn proxy_obj_xy() -> (f64, f64) {
+        let (x, y, _, _) = proxy_obj();
+        (x, y)
     }
 }

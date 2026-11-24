@@ -55,6 +55,8 @@ export interface ScanSummary {
   reused_frames: number;
   /** 文本目标新做 OCR 的帧数。 */
   computed_frames: number;
+  /** 模板检查提示（模板过小、过平坦、特征点不足等）。 */
+  warnings: string[];
   segments: number;
   cache_warning: string | null;
 }
